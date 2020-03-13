@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+ <!--  -->
+<head>
+	<title> ExportedFrames</title>
+	<meta charset="utf-8" />
+	<style> body { margin: 0; }	</style> 
+</head>
+<body> 	</body>
+<script src="three.min.114.js"></script>
+<script src="OrbitControls.114.js"></script>
+
+<script>
+
+// @author hofk
+
+'use strict';
+ 
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera( 55, window.innerWidth / window.innerHeight, 0.001, 10000 );
+camera.position.set( 0, 1, 5 );
+const renderer = new THREE.WebGLRenderer( { antialias: true } );
+renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setClearColor( 0x000000, 1 );
+const container = document.createElement( 'div' );
+document.body.appendChild( container );
+container.appendChild( renderer.domElement ); 
+
+// lights 
+const lightA0 = new THREE.AmbientLight( 0xffffff, 0.5 );
+scene.add( lightA0 );
+const lightA1 = new THREE.DirectionalLight();
+lightA1.position.set(  2, 10, 5 );
+scene.add( lightA1 );
+const lightA2 = new THREE.DirectionalLight();
+lightA2.position.set(  -2, 8, -4 );
+scene.add( lightA2 );
+
+const gridHelper = new THREE.GridHelper( 20, 20 );
+scene.add( gridHelper );
+ 
+const controls = new THREE.OrbitControls( camera, renderer.domElement );
+
+// HINT!  Array gFrame for frames exported from ConstructFrame.html, increase the export ID there for every example.
+let gFrame = []; // start export with ID 0
+
+	//  ... insert the exported definitions here ...
+
+
+ 	//  ............................................
+
+// frame material   rainbow-colors
+ 
+const m0 = new THREE.MeshPhongMaterial( { color: 0xfa0001, side: THREE.DoubleSide } );
+const m1 = new THREE.MeshPhongMaterial( { color: 0xff7b00, side: THREE.DoubleSide } );
+const m2 = new THREE.MeshPhongMaterial( { color: 0xf9f901, side: THREE.DoubleSide } );
+const m3 = new THREE.MeshPhongMaterial( { color: 0x008601, side: THREE.DoubleSide } );
+const m4 = new THREE.MeshPhongMaterial( { color: 0x01bbbb, side: THREE.DoubleSide } );
+const m5 = new THREE.MeshPhongMaterial( { color: 0x250290, side: THREE.DoubleSide } );
+const m6 = new THREE.MeshPhongMaterial( { color: 0xfc4ea5, side: THREE.DoubleSide } );
+const m7 = new THREE.MeshPhongMaterial( { color: 0x83058a, side: THREE.DoubleSide } );
+const m8 = new THREE.MeshPhongMaterial( { color: 0x83058a, side: THREE.DoubleSide } );
+
+const material = [ m0, m1, m2, m4, m5, m6, m7, m8, m0, m1, m2, m4, m5, m6, m7, m8, m0, m1, m2, m4, m5, m6, m7, m8, m0, m1, m2, m4, m5, m6, m7, m8, m0, m1, m2, m4, m5, m6, m7, m8, m0, m1, m2, m4, m5, m6, m7, m8, m0, m1, m2, m4, m5, m6, m7, m8, m0, m1, m2, m4, m5, m6, m7, m8, m0, m1, m2, m4, m5, m6, m7, m8 ];
+
+let mesh = [];
+
+for ( let i = 0; i < gFrame.length; i ++ ) {
+
+	 mesh[ i ] = new THREE.Mesh( gFrame[ i ], material );
+	
+	scene.add( mesh[ i ] );
+	
+}	
+
+animate();
+
+function animate() {
+	
+	requestAnimationFrame( animate );
+	renderer.render( scene, camera );
+	controls.update();
+	
+}
+
+</script>
+
+</html>

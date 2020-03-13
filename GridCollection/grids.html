@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<!--   *** grids ***
+/**
+ * @author hofk
+*/
+-->
+<head>
+	<title> grids  </title>
+	<meta charset="utf-8" />
+	<style>
+		html, body {
+		height: 100%;
+		margin: 0;
+		}
+  </style>
+</head>
+<body> </body>
+<script src="three.min.99.js"></script>
+<script src="OrbitControls.js"></script>
+<script src="THREEx.WindowResize.js"></script>
+<script src="THREEf.js"></script>
+<script src="THREEp.js"></script>
+<script src="THREEg.js"></script>	
+<script>
+'use strict'
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 2000 );
+camera.position.z = 120;
+var renderer = new THREE.WebGLRenderer( { antialias: true } );
+renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setClearColor( 0x777777, 1 );	
+var container = document.createElement( 'div' );
+document.body.appendChild( container );
+container.appendChild( renderer.domElement ); 
+THREEx.WindowResize( renderer, camera );
+var controls = new THREE.OrbitControls( camera, renderer.domElement );
+
+var uvTex = new THREE.TextureLoader().load( "sunflower.png" );	// free
+var material = new THREE.MeshBasicMaterial( {  map: uvTex, side: THREE.DoubleSide} ); // not wireframe
+var wireMaterial = new THREE.MeshBasicMaterial( { map: uvTex, side: THREE.DoubleSide, wireframe: true } );
+
+// ............................ create functions / geometries  ...........................................
+
+function createObliqueGrid( width, height, widthSegments, heightSegments, stretch, flat ) {
+	
+	width = width !== undefined ? width : 100;
+	height = height !== undefined ? height : 100;
+	widthSegments = widthSegments !== undefined ? widthSegments : 20; 
+	heightSegments = heightSegments !== undefined ? heightSegments : 20;
+	stretch = stretch !== undefined ? stretch : 0; // normally -1 to +1
+	flat = flat !== undefined ? flat : false;
+	
+	var split = flat ? 3 : 2; 
+	var halfWidth = width / 2;
+	var halfHeight = height / 2;
+	var wp = split * widthSegments + 1;
+	var dwp = width / widthSegments / split;
+	var dhp = height / heightSegments / 2;
+	var st = 1 + stretch;
+	var obliqueGrid = new THREE.Object3D( );
+	var zigzags = [ ];
+	
+	var geometryZigzag = [ ];
+	var positions = [ ];
+	var uvs = [ ];
+	
+	var sign, i1;
+	
+	for ( var i = 0; i < heightSegments * 2; i ++ ) {
+		
+		geometryZigzag[ i ] = new THREE.BufferGeometry();
+		positions[ i ] = new Float32Array( wp * 3 );
+		uvs[ i ] = new Float32Array( wp * 2 );
+		geometryZigzag[ i ].addAttribute( 'position', new THREE.BufferAttribute( positions[ i ], 3 ) );
+		geometryZigzag[ i ].addAttribute( 'uv', new THREE.BufferAttribute( uvs[ i ], 2 ) );
+		
+		sign = i % 2 === 0 ? -1 : 1;
+		i1 = i % 2 === 0 ?  i + 1 : i;
+		
+		for ( var j = 0; j < wp ; j ++ ) {
+			
+			positions[ i ][ j * 3 ] = j * dwp; 
+			positions[ i ][ j * 3 + 1 ] = j % split === 0 ? 0 : sign * st * dhp;
+			positions[ i ][ j * 3 + 2 ] = 0;
+			
+		}
+		
+		zigzags[ i ] = new THREE.Line( geometryZigzag[ i ], material ); // material is not wireframe - still a grid
+		
+		for ( var j = 0; j < wp ; j ++ ) {
+			
+			zigzags[ i ].geometry.getAttribute( 'uv' ).array[ j * 2 ] = j * dwp / width;
+			zigzags[ i ].geometry.getAttribute( 'uv' ).array[ j * 2 + 1 ] = ( i1 * dhp + ( j % split === 0 ? 0 : sign * st * dhp ) ) / height;
+			
+		}
+		
+		zigzags[ i ].position.set( -halfWidth, i1 * dhp - halfHeight, 0 );
+		obliqueGrid.add( zigzags[ i ] );
+		
+	}	
+	
+	return obliqueGrid;
+	
+}
+
+function createHexagonGrid( radius, rings ) {
+	
+	// outer grid radius, rings of hexagons around the central hexagon
+	radius = radius !== undefined ? radius : 50;
+	rings = rings !== undefined ? rings : 20;
+	
+	var x, y;
+	var r = 2 * radius / ( 2 * rings + 1 ) / Math.sqrt( 3 );	// radius of corner points, size of a single hexagon
+	var ri = r * Math.sqrt( 3 ) / 2;							// inner radius of a single hexagon
+	var pi6 = Math.PI / 6;
+	var hexagonGrid = new THREE.Object3D( );
+	var hexagons = [ ];
+	
+	//var hexagonCount = 3 * rings * rings + 3 * rings + 1;
+	
+	var geometryHexagon	 = [ ];
+	var positions = [ ];
+	var uvs = [ ];
+	
+	var h = 0;
+	
+	for ( var sg = -1; sg < 2; sg ++ ) {
+		
+		var rg0 = sg === 0 ? rings : 0;
+		
+		for( var i = 1, k = 2 * rings + 1 - Math.abs( sg ); k > rings + rg0; i ++, k -- ) {
+			
+			x = ri * ( 1 - k );
+			y = sg * 1.5 * r * i;
+			
+			for( var j = 0 ; j < k; j ++ ) {
+				
+				geometryHexagon[ h ] = new THREE.BufferGeometry();
+				positions[ h ] = new Float32Array( 18 );
+				uvs[ h ] = new Float32Array( 12 );
+				geometryHexagon[ h ].addAttribute( 'position', new THREE.BufferAttribute( positions[ h ], 3 ) );
+				geometryHexagon[ h ].addAttribute( 'uv', new THREE.BufferAttribute( uvs[ h ], 2 ) );
+				
+				for( var ip = 0; ip < 6; ip ++ ) {
+					
+					positions[ h ][ ip * 3 ] = r * Math.cos( ( 2 * ip + 1 ) * pi6 );
+					positions[ h ][ ip * 3 + 1 ] = r * Math.sin( ( 2 * ip + 1 ) * pi6 );
+					positions[ h ][ ip * 3 + 2 ] = 0;
+					
+				}
+				
+				hexagons[ h ] = new THREE.LineLoop( geometryHexagon[ h ], material ); // material is not wireframe - still a grid
+				
+				for( var iuv = 0; iuv < 6; iuv ++ ) {
+					
+					hexagons[ h ].geometry.getAttribute( 'uv' ).array[ iuv * 2 ] =  0.5 * ( 1 + ( x + r * Math.cos( ( 2 * iuv + 1 ) * pi6 ) ) / radius ); 
+					hexagons[ h ].geometry.getAttribute( 'uv' ).array[ iuv * 2 + 1 ] =  0.5  * ( 1 + ( y + r * Math.cos( ( 2 * iuv + 1 ) * pi6 ) ) / radius );
+					
+				}
+				
+				x += ri * 2;
+				
+				hexagons[ h ].position.set( x, y, 0 );
+				hexagonGrid.add( hexagons[ h ] );
+				
+				h ++;
+				
+			}
+			
+		}
+		
+	}
+	
+	return hexagonGrid;
+	
+}
+
+/* .toGrid: function() from prisoner849 (Paul West)
+
+ https://discourse.threejs.org/t/gridboxgeometry/1420
+ https://discourse.threejs.org/t/grids-of-waves-shaders/1168
+ https://jsfiddle.net/prisoner849/mcdtatpv/
+
+*/
+ Object.assign(THREE.PlaneBufferGeometry.prototype, {
+    toGrid: function() {
+      let segmentsX = this.parameters.widthSegments || 1;
+      let segmentsY = this.parameters.heightSegments || 1;
+      let indices = [];
+      for (let i = 0; i < segmentsY + 1; i++) {
+        let index11 = 0;
+        let index12 = 0;
+        for (let j = 0; j < segmentsX; j++) {
+          index11 = (segmentsX + 1) * i + j;
+          index12 = index11 + 1;
+          let index21 = index11;
+          let index22 = index11 + (segmentsX + 1);
+          indices.push(index11, index12);
+          if (index22 < ((segmentsX + 1) * (segmentsY + 1) - 1)) {
+            indices.push(index21, index22);
+          }
+        }
+        if ((index12 + segmentsX + 1) <= ((segmentsX + 1) * (segmentsY + 1) - 1)) {
+          indices.push(index12, index12 + segmentsX + 1);
+        }
+      }
+      this.setIndex(indices);
+      return this;
+    }
+  });
+
+var geometry = new THREE.PlaneBufferGeometry( 40, 40, 40, 40 );
+
+var geometryTHREEf =  new THREE.BufferGeometry();
+geometryTHREEf.createMorphGeometry = THREEf.createMorphGeometry;
+geometryTHREEf.createMorphGeometry({
+	style: 'map',
+	radius: 6.5,
+	height: 40,
+	radiusSegments: 20,
+	heightSegments: 20,
+	waffled: true,
+});
+
+var rhombGeometry = new THREE.PlaneBufferGeometry( 40, 40, 40, 40 );
+var toGridGeometry = new THREE.PlaneBufferGeometry( 40, 40, 40, 40 ).toGrid(); // .toGrid() from prisoner849 (Paul West)
+
+var geometryTHREEp3 = new THREE.BufferGeometry();
+geometryTHREEp3.createMorphGeometry = THREEp.createMorphGeometry;
+geometryTHREEp3.createMorphGeometry({
+	style: 'map',
+	radius: 12,
+	wedges: 3,
+	usedWedges: 3,
+	equator: 20,
+	bottom: 20,
+	top: 40,
+});
+
+var geometryTHREEg =  new THREE.BufferGeometry();
+geometryTHREEg.createMagicSphere = THREEg.createMagicSphere;
+geometryTHREEg.createMagicSphere({
+	rounding: function ( t ) { return 0 },
+	radius: function ( t ) { return 30 },
+	equator: 40,
+	parts: [ 1 ],
+});
+
+var geometryTHREEp =  new THREE.BufferGeometry();
+geometryTHREEp.createMorphGeometry = THREEp.createMorphGeometry;
+geometryTHREEp.createMorphGeometry({
+	style: 'map',
+	radius: 12,
+	equator: 20,
+	bottom: 20,
+	top: 40,
+});
+
+var costumDesign = [
+'    F-------M-------7    ',
+'   ###################   ',
+'  #####################  ',
+' ####################### ',
+'F#######################7',
+'I#######################1',
+'I#######################1',
+'I#######################1',
+'I#######################1',
+'I#######################1',
+'I#######################1',
+'I##########+++##########1',
+'C##########+++##########3',
+'I##########+++##########1',
+'I#######################1',
+'I#######################1',
+'I#######################1',
+'I#######################1',
+'I#######################1',
+'I#######################1',
+'L#######################J',
+' ####################### ',
+'  #####################  ',
+'   ###################   ',
+'    L.......U.......J    '
+];
+var gCostumGrid = new THREE.BufferGeometry( );
+gCostumGrid.createLineGrid = THREEg.createLineGrid;
+gCostumGrid.createLineGrid( costumDesign );
+
+var designOuterGrid = [
+'#### ', 		// to get center: space after #  
+' ###',
+' ####'
+];
+
+var gOuterGrid = new THREE.BufferGeometry( );
+gOuterGrid.createLineGrid = THREEg.createLineGrid;
+gOuterGrid.createLineGrid( designOuterGrid );
+
+
+// ......................... add grids to the scene ..................................
+
+
+var mesh0 = new THREE.Mesh( geometry, material );  // material is not wireframe  - no grid
+scene.add( mesh0 );
+mesh0.position.set( -100, 50, 0 );
+
+var obliqueGrid = new createObliqueGrid( 40, 40, 40, 40, 0.4, true ); 
+scene.add( obliqueGrid );
+obliqueGrid.position.set( -50, 50, 0 );
+
+var hexagonGrid = createHexagonGrid( 20, 25 ); // grid radius and rings of hexagons around the central hexagon
+scene.add( hexagonGrid );
+hexagonGrid.position.y = 50;
+
+var meshTHREEf = new THREE.Mesh( geometryTHREEf, wireMaterial );
+scene.add( meshTHREEf );
+meshTHREEf.position.set( 30, 50, 0 );
+
+var mesh1 = new THREE.Mesh( geometry, wireMaterial );
+scene.add( mesh1 );
+mesh1.position.x = -50;
+
+var rhombMesh = new THREE.LineSegments( rhombGeometry, material ); // material is not wireframe - still a grid
+scene.add( rhombMesh );
+
+var gridMesh = new THREE.LineSegments( toGridGeometry, material ); // material is not wireframe - still a grid
+scene.add( gridMesh );
+gridMesh.position.x = 50;
+
+var meshTHREEp3 = new THREE.Mesh( geometryTHREEp3, wireMaterial );
+scene.add( meshTHREEp3 );
+meshTHREEp3.position.set( -70, -50, 0 );
+meshTHREEp3.rotation.set( 1.57, 1.57, 0 );
+
+var meshTHREEg = new THREE.Mesh( geometryTHREEg, wireMaterial );
+scene.add( meshTHREEg );
+meshTHREEg.position.set( 0, -57, -20 );
+meshTHREEg .rotation.set( 0.62, -2.35, 0 );
+
+var meshTHREEp = new THREE.Mesh( geometryTHREEp, wireMaterial );
+scene.add( meshTHREEp );
+meshTHREEp.position.set( 30, -50, 0 );
+meshTHREEp.rotation.set( 1.57, 1.57, 0 );
+
+var costumGrid = new THREE.LineSegments( gCostumGrid, material ); 
+costumGrid.scale.set( 1.5, 1.5, 1.5 );
+costumGrid.position.set( 100, -50, 0 );
+scene.add( costumGrid );
+
+// outer frame
+var outerGrid = new THREE.LineSegments( gOuterGrid, new THREE.LineBasicMaterial( { color: 0x00ff00} ) ); 
+outerGrid.scale.set( 50, 50, 50 );
+scene.add( outerGrid );
+
+/* 
+// old version instead of outerGrid:
+var gridHelper = new THREE.GridHelper( 150, 3, 0x00ff00, 0x00ff00 );
+scene.add( gridHelper );
+gridHelper.rotation.x = 1.57
+*/
+
+animate();
+
+function animate() {
+	
+	requestAnimationFrame( animate );
+	renderer.render( scene, camera );
+	controls.update();
+	
+}
+</script>
+
+</html>

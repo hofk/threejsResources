@@ -1,0 +1,1573 @@
+<!DOCTYPE html>
+<!-- @author hofk -->
+<head>
+	<title> ConstructFrame </title>
+	<meta charset="utf-8" />
+	<style>
+		body {
+			margin: 0px;
+			overflow: hidden;
+			text-align: center;
+			background-color: #66ccff;
+		}
+		.container {
+		position: absolute;
+		top: 0;
+		z-index: -1;
+		width: 100%;
+		height: 100%;
+		}
+		* {box-sizing: border-box;}
+		.comp {
+			position: absolute;
+			width: 100%;
+			height: 100%;
+			overflow: hidden;
+		}
+		.comp canvas { 
+		/*display: block; */
+		/*vertical-align: middle;*/
+		}
+		.sliderAB {
+			position: absolute;
+			z-index: 9;
+			cursor: nw-resize;
+			width: 60px;
+			height: 60px;
+			background-color: #2196F3;
+			opacity: 0.75;
+			border-radius: 50%;	
+		}
+		.comp-unitL {
+			position: absolute;
+			z-index: 8;
+			width:72px;	
+			height: 24px;
+			left: calc( 100% - 280px );
+		}
+		.sliderL {
+			width: 100%;
+			height: 8px;
+			border-radius: 4px;
+			background: #dddddd;
+			outline: none;
+			opacity: 0.5;
+			cursor: pointer;
+		}
+		.sliderL:hover {
+			opacity: 1;
+		}
+		.comp-unitR {
+			position: absolute;
+			z-index: 8;
+			width:72px;	
+			height: 24px;
+			left: calc( 100% - 148px );
+		}
+		.sliderR {
+			width: 100%;
+			height: 8px;
+			border-radius: 4px;
+			background: #dddddd;
+			outline: none;
+			opacity: 0.5;
+			cursor: pointer;
+		}
+		.sliderR:hover {
+			opacity: 1;
+		}
+		.comp-check {
+			position: absolute;
+			z-index: 8;
+			width: 280px;
+			height: 24px;
+			left: calc( 100% - 280px );
+			top: 40px;
+			border-radius: 4px;
+			color: #2196F3;
+			
+		}
+		.check {
+			cursor: pointer;
+		}
+		.comp-helpRows{
+			text-align: left;
+			position: absolute;
+			left: 10px;
+			
+		}
+		.comp-export {
+			position: absolute;
+			z-index: 8;
+			width: 280px;
+			height: 24px;
+			left: calc( 100% - 280px );
+			top: 80px;
+			color: #2196F3;
+		
+		}
+		.export {
+			width: 40px;
+			border-radius: 6px;
+			cursor: pointer;
+		}
+		.btn {
+			cursor: pointer;
+		}
+		#xyValue {
+			position: absolute;
+			float: left;
+			color: #666600;
+		}
+	</style>
+</head>
+
+<body>
+	
+	<div class="container">
+		<div class="comp containerA">  </div>
+		<div class="sliderAB"> </div>
+		<div class="comp containerB"></div>
+	</div>
+	
+	<div id="sliderLContainer" class="comp-unitL">
+		<span id="showSizeL"></span>
+		<input id="sizeRangeL" type="range" min="1" max="6" value="3" step="1" class="sliderL" >
+		
+	</div>
+		
+	<div id="sliderRContainer" class="comp-unitR">
+		<span id="showSizeR"></span>
+		<input id="sizeRangeR" type="range" min="1" max="6" value="2" step="1" class="sliderR" >
+		
+	</div>
+	
+	<div id="checkContainer" class="comp-check">
+		<span id="check"></span>
+		<input id="openEnded" type="checkbox" class="check" > open ended
+		<input id="profileMaterial" type="checkbox" class="check" > profile material
+	</div>
+	
+	<div id="exportContainer" class="comp-export">
+		<button id="exportCode" class="btn">export</button>
+		ID
+		<input id="fID" type="number"  min="0" max="999" value="0" step="1" class="export" >
+		deci.
+		<input id="nDec" type="number"  min="1" max="21" value="3" step="1" class="export" >
+		
+		<button id="helpText" class="btn" >?</button>
+	</div>
+	
+	<div id="helpOutput" >
+		<p style="text-align: center;">
+			
+			<input type="radio" name="choose" id="en" onchange="showHelp( )" checked="checked"> en
+			<input type="radio" name="choose" id="de" onchange="showHelp( )"> de -
+			<button type="button" onclick="hideHelp()" style="color: #ff0000"> X </button><br/>
+		</p>
+		<span id="helpRows" class="comp-helpRows" style="text-align: left;">
+		
+		</span>
+	</div>
+	
+	<div id="codeOutput" >
+		<p style="text-align: center;">
+			<button type="button" onclick="hideOutput()" style="color: #ff0000" > X </button><br/>
+		</p>
+		<textarea id="codeLines" rows="12" > </textarea>
+	</div>
+	
+	<div id="xyValue">
+	</div>
+	
+</body>
+
+<script src="three.min.114.js"></script>
+<script src="OrbitControls.114.js"></script>
+
+<script>
+
+// @author hofk
+
+'use strict'
+
+let cameraAzPos, widthB, heightB, aspectB;
+let markerX, markerY, matMarkerL, matMarkerR, gReticle, reticle, reticleM, markerSize;
+let gCenterLineA, centerLineA, gFrameA, frameA, matFrameA, gLineL, gLineR, matLineL, matLineR, gridLineL, gridLineR, sizeFactorL, sizeFactorR;
+let posCountFrameA, faceCountFrameA;
+
+let countPL = 0;
+let countPR = 0;
+let markersL = [];
+let markersR = [];
+let markerCountL = -1;
+let markerCountR = -1;
+let idxMoveL = -1;
+let idxMoveR = -1;
+let idxHitL = -1;
+let idxHitR = -1;
+let idx3HitL; // idxHitL / 3
+let idx3HitR; // idxHitR / 3
+let key = '';
+let pos = [];
+let linePosCount = 200;
+
+const containerA = document.querySelector( '.containerA' );
+const containerB = document.querySelector( '.containerB' );
+const sliderAB = document.querySelector( '.sliderAB' );
+
+containerB.addEventListener('mousemove', onContainerBMouseMove );
+//containerB.addEventListener('click', onContainerBClick );
+containerB.addEventListener('mousedown', onContainerBmouseDown );
+containerB.addEventListener('mouseup', onContainerBmouseUp );
+
+// scenes 
+const sceneA = new THREE.Scene();
+sceneA.background = new THREE.Color( 0x333333 );
+const sceneB = new THREE.Scene();
+sceneB.background = new THREE.Color( 0xeeeeee );
+
+// cameras
+const cameraA = new THREE.PerspectiveCamera( 55, containerA.clientWidth / containerA.clientHeight, 0.001, 10000 );
+cameraAzPos = 5;
+cameraA.position.set( 0, 0, cameraAzPos );
+widthB = containerB.clientWidth;
+heightB = containerB.clientHeight;
+if ( widthB > 2 * heightB ) { widthB = 2 * heightB; } else { heightB = widthB / 2; }
+aspectB = widthB / heightB;
+const cameraB = new THREE.OrthographicCamera( -aspectB, aspectB, 1, -1, 0.01, 10 );
+cameraB.position.set( 0, 0, 0.1 );
+  
+// controls 
+const controlsA = new THREE.OrbitControls( cameraA, containerA ); // only controlsA
+ 
+// lights 
+const lightA0 = new THREE.AmbientLight( 0xffffff, 0.5 );
+sceneA.add( lightA0 );
+const lightA1 = new THREE.DirectionalLight();
+lightA1.position.set(  2, 10, 5 );
+sceneA.add( lightA1 );
+const lightA2 = new THREE.DirectionalLight();
+lightA2.position.set(  -2, 8, -4 );
+sceneA.add( lightA2 );
+
+// renderer 
+const rendererA = new THREE.WebGLRenderer( { antialias: true } );
+rendererA.setSize( containerA.clientWidth, containerA.clientHeight );
+rendererA.setPixelRatio( window.devicePixelRatio ); 
+containerA.appendChild( rendererA.domElement );
+const rendererB = new THREE.WebGLRenderer( { antialias: true } );
+rendererB.setSize( widthB, heightB );
+rendererB.setPixelRatio( window.devicePixelRatio );
+containerB.appendChild( rendererB.domElement );
+
+// slider
+const sliderLContainer = document.getElementById("sliderLContainer"); 
+const sliderL = document.getElementById("sizeRangeL");
+const showSizeL = document.getElementById("showSizeL");
+getSizeFactorL();
+sliderL.oninput = getSizeFactorL;
+sliderL.onchange = onSliderLRchange;
+showSizeL.style.background = 'rgba(200,200,200,0.5)'; 
+showSizeL.style.borderRadius =  '6px';
+showSizeL.style.position = 'absolute';
+showSizeL.style.left = '88px';
+
+const sliderRContainer = document.getElementById("sliderRContainer"); 
+const sliderR = document.getElementById("sizeRangeR");
+const showSizeR = document.getElementById("showSizeR");
+getSizeFactorR();
+sliderR.oninput = getSizeFactorR;
+sliderR.onchange = onSliderLRchange;
+showSizeR.style.background = 'rgba(200,200,200,0.5)'; 
+showSizeR.style.borderRadius =  '6px';
+showSizeR.style.position = 'absolute';
+showSizeR.style.left = '88px';
+
+// open ended , material
+const checkOpenEnded = document.getElementById("openEnded");
+checkOpenEnded.onchange = redrawSceneA;
+
+const checkProfileMaterial = document.getElementById("profileMaterial");
+checkProfileMaterial.onchange = redrawSceneA;
+
+// output: code, help
+document.getElementById("exportCode").onclick = outputJavaScript;
+document.getElementById( "helpText" ).onclick = showHelpText;
+
+const helpOutput = document.getElementById( "helpOutput" );
+helpOutput.style.display = "none";
+helpOutput.style.zIndex = 1;
+helpOutput.style.position = "absolute";
+helpOutput.style.width = "100%";
+helpOutput.style.height = "600px";
+helpOutput.style.top = "0px";
+helpOutput.style.padding  = "5px";
+helpOutput.style.backgroundColor = "#feffe6";
+helpOutput.style.border = "2px solid #11ff22";
+
+let hlpEN = "<br>";
+let hlpDE = "<br>";
+defineHelpText( );
+
+const codeOutput = document.getElementById( "codeOutput" );
+codeOutput.style.display = "none";
+codeOutput.style.zIndex = 1;	
+codeOutput.style.position = "absolute";
+codeOutput.style.width = "100%";
+codeOutput.style.height = "300px";
+codeOutput.style.top = "calc( 100% - 300px )";
+codeOutput.style.padding  = "5px";
+codeOutput.style.backgroundColor = "#feffe6";
+codeOutput.style.border = "2px solid #2196F3";
+
+const codeLines = document.getElementById( "codeLines" );
+
+codeLines.cols = "" + window.innerWidth / 10;
+
+window.addEventListener('keydown', onWindowKeyDown );
+window.addEventListener('keyup', onWindowKeyUp );
+
+containerA.style.cursor = 'move';
+
+createDesignArea( );
+createReticles( );
+createLinesLR( );
+
+const gridHelper = new THREE.GridHelper( 20, 20 );
+sceneA.add( gridHelper );
+ 
+// animation
+
+rendererA.setAnimationLoop( () => { render(); } );
+rendererB.setAnimationLoop( () => { render(); } );
+
+initComparisons();
+
+// frame center line (A)
+gCenterLineA = new THREE.BufferGeometry( );
+gCenterLineA.positions = new Float32Array( linePosCount * 3 );
+gCenterLineA.setAttribute( 'position', new THREE.BufferAttribute( gCenterLineA.positions, 3 ) );
+centerLineA = new THREE.Line( gCenterLineA, new THREE.LineBasicMaterial( { color: 0xffffff, side: THREE.DoubleSide } ) );
+sceneA.add( centerLineA );
+
+// frame material (A)   rainbow-colors
+ 
+const m0 = new THREE.MeshPhongMaterial( { color: 0xfa0001, side: THREE.DoubleSide } );
+const m1 = new THREE.MeshPhongMaterial( { color: 0xff7b00, side: THREE.DoubleSide } );
+const m2 = new THREE.MeshPhongMaterial( { color: 0xf9f901, side: THREE.DoubleSide } );
+const m3 = new THREE.MeshPhongMaterial( { color: 0x008601, side: THREE.DoubleSide } );
+const m4 = new THREE.MeshPhongMaterial( { color: 0x01bbbb, side: THREE.DoubleSide } );
+const m5 = new THREE.MeshPhongMaterial( { color: 0x250290, side: THREE.DoubleSide } );
+const m6 = new THREE.MeshPhongMaterial( { color: 0xfc4ea5, side: THREE.DoubleSide } );
+const m7 = new THREE.MeshPhongMaterial( { color: 0x83058a, side: THREE.DoubleSide } );
+const m8 = new THREE.MeshPhongMaterial( { color: 0x83058a, side: THREE.DoubleSide } );
+
+matFrameA = [ m0, m1, m2, m4, m5, m6, m7, m8, m0, m1, m2, m4, m5, m6, m7, m8, m0, m1, m2, m4, m5, m6, m7, m8, m0, m1, m2, m4, m5, m6, m7, m8, m0, m1, m2, m4, m5, m6, m7, m8, m0, m1, m2, m4, m5, m6, m7, m8, m0, m1, m2, m4, m5, m6, m7, m8, m0, m1, m2, m4, m5, m6, m7, m8, m0, m1, m2, m4, m5, m6, m7, m8 ];
+
+// matFrameA  = materials[ 5 ].clone();
+// matFrameA.wireframe = true;
+
+// matFrameA  = new THREE.MeshPhongMaterial( { color: 0x0000aa, side: THREE.DoubleSide, wireframe: false } );
+
+// ..... functions ................
+
+function redrawSceneA( ) {
+	
+	gCenterLineA.setDrawRange ( 0, markerCountL + 1 );
+	
+	if ( frameA ) {
+			
+			sceneA.remove( frameA );
+			gFrameA.dispose();
+			
+	}
+	
+	let openEnded = checkOpenEnded.checked;
+	let profileMaterial = checkProfileMaterial.checked;
+	
+	if ( markersL.length > 1 && markersR.length > 1) {
+		
+		let hs = markerCountL > -1 ? markerCountL : 1; // height segments 
+		let rs = markerCountR > -1 ? markerCountR : 1; // radius segments
+		let hs1 = hs + 1;
+		let rs1 = rs + 1;
+		
+		posCountFrameA = hs1 * rs1 + ( openEnded ? 0 : 2 );
+		faceCountFrameA =  hs * rs * 2 + ( openEnded ? 0 : rs * 2 );
+		 
+		gFrameA = new THREE.BufferGeometry( );
+		gFrameA.indices = new Uint32Array( faceCountFrameA  * 3  );
+		gFrameA.positions = new Float32Array( posCountFrameA * 3 );
+		
+		gFrameA.setIndex( new THREE.BufferAttribute( gFrameA.indices, 1 ) );
+		gFrameA.setAttribute( 'position', new THREE.BufferAttribute( gFrameA.positions, 3 ) );
+		
+		let a, b1, c1, b2, c2;
+		let i3, i1, j3;
+		let xc0, yc0, xc1, yc1, xc2, yc2, xR, xRdiv;
+		let dx0, dy0, dx2, dy2;
+		let e0x, e0y,e0Length, e2x, e2y, e2Length, ex, ey, eLength;
+		let phi, bend;
+		let x, y, z;
+		let vIdx, posIdx;
+		let pointHit = false;
+		let idxCount = 0;
+		const epsilonColinear = 0.00000001;	
+		const epsilon = 0.004;
+		
+		for ( let i = 0; i < hs; i ++ ) {
+			
+			if ( profileMaterial ) gFrameA.addGroup( idxCount, rs * 6, i ); // MultiMaterial support
+				
+			i1 = i + 1;
+			
+			for ( let j = 0; j < rs; j ++ ) {
+				
+				// 2 faces / segment,  3 vertex indices
+				a =  rs1 * i + j;
+				c1 = rs1 * i1 + j; // left 
+				b1 = c1 + 1;
+				//c2 = b1;         // right
+				b2 = a + 1;
+				
+				gFrameA.indices[ idxCount     ] = a; // left 
+				gFrameA.indices[ idxCount + 1 ] = b1;
+				gFrameA.indices[ idxCount + 2 ] = c1; 
+				
+				gFrameA.indices[ idxCount + 3 ] = a; // right 
+				gFrameA.indices[ idxCount + 4 ] = b2,
+				gFrameA.indices[ idxCount + 5 ] = b1; // = c2
+				
+				if ( !profileMaterial ) gFrameA.addGroup( idxCount, 6, j ); // MultiMaterial support
+				
+				idxCount += 6;
+				
+			}
+			
+		}
+		
+		if( !openEnded ) {
+			
+			gFrameA.addGroup( idxCount, rs * 3, rs ); // MultiMaterial support
+			
+			a = hs1 * rs1;
+			
+			for ( let j = 0; j < rs; j ++ ) {
+				
+				gFrameA.indices[ idxCount     ] = a; 
+				gFrameA.indices[ idxCount + 1 ] = j + 1;
+				gFrameA.indices[ idxCount + 2 ] = j;
+				
+				idxCount += 3;
+				
+			}
+			
+			gFrameA.addGroup( idxCount, rs * 3, rs + 1 ); // MultiMaterial support
+			
+			a += 1; 
+			
+			for ( let j = rs1 + 1; j > 2; j -- ) {
+				
+				gFrameA.indices[ idxCount     ] = a; 
+				gFrameA.indices[ idxCount + 1 ] = a - j;
+				gFrameA.indices[ idxCount + 2 ] = a - j + 1;
+				
+				idxCount += 3;
+				
+			}
+			
+		}
+		
+		for ( let i = 0; i < hs1; i ++ ) {
+			
+			i3 = 3 * i;
+			//......................[    ] + 1 x is 1 left in L ...
+			xc1 = ( gLineL.positions[ i3 ] + 1 ) * sizeFactorL;
+			yc1 = gLineL.positions[ i3 + 1 ] * sizeFactorL;
+			
+			if ( i === 0 ) {
+				
+				//......................[                ] + 1 x is 1 left in L ...
+				xc0 = ( gLineL.positions[ ( hs - 1 ) * 3 ] + 1 ) * sizeFactorL;	// penultimate point
+				yc0 = gLineL.positions[ ( hs - 1 ) * 3 + 1 ] * sizeFactorL;
+				
+				//......................[        ] + 1 x is 1 left in L ...
+				xc2 = ( gLineL.positions[ hs * 3 ] + 1 ) * sizeFactorL;	// here c2 ultimate point only for pointHit test
+				yc2 = gLineL.positions[ hs * 3 + 1 ] * sizeFactorL;
+				
+				pointHit = Math.abs( xc1 - xc2 ) < epsilon && Math.abs( yc1 - yc2 ) < epsilon;
+				
+			} else {
+				
+				//......................[        ] + 1 x is 1 left in L ...
+				xc0 = ( gLineL.positions[ i3 - 3 ] + 1 ) * sizeFactorL;		// previous point
+				yc0 = gLineL.positions[ i3 - 2 ] * sizeFactorL;
+				
+			}
+			
+			if ( i === hs ) {
+				
+				//......................[   ] + 1 x is 1 left in L ...
+				xc2 = ( gLineL.positions[ 3 ] + 1 ) * sizeFactorL;			// second point
+				yc2 = gLineL.positions[ 4 ] * sizeFactorL;
+			 	
+			} else {
+				
+				//......................[        ] + 1 x is 1 left in L ...
+				xc2 = ( gLineL.positions[ i3 + 3 ] + 1 ) * sizeFactorL; 	// next point
+				yc2 = gLineL.positions[ i3 + 4 ] * sizeFactorL;	
+				
+			}
+			
+			if ( !pointHit ) {
+				
+				if ( i === 0 ) {
+					
+					// direction
+					dx2 = xc2 - xc1;
+					dy2 = yc2 - yc1;
+					
+					// unit vector
+					e2Length = Math.sqrt( dx2 * dx2 + dy2 * dy2 );
+					
+					e2x = dx2 / e2Length;
+					e2y = dy2 / e2Length;
+					
+					// orthogonal
+					ex = e2y;
+					ey = -e2x;
+					xRdiv = 1;
+					bend = 1;
+				}
+				
+				if ( i === hs  ) {
+					
+					// direction
+					
+					dx0 = xc1 - xc0;
+					dy0 = yc1 - yc0;
+					
+					// unit vector
+					e0Length = Math.sqrt( dx0 * dx0 + dy0 * dy0 );
+					
+					e0x = dx0 / e0Length;
+					e0y = dy0 / e0Length;
+					
+					// orthogonal,
+					ex = e0y;
+					ey = -e0x;
+					xRdiv = 1;
+					bend = 1;
+					
+				}
+				
+			}
+			
+			if ( ( i > 0 && i < hs ) || pointHit ) {
+				
+				
+				// directions
+				
+				dx0 = xc0 - xc1;
+				dy0 = yc0 - yc1;
+				
+				dx2 = xc2 - xc1;
+				dy2 = yc2 - yc1;
+				
+				if( Math.abs( ( dy2 / dx2 )  -  ( dy0 / dx0 ) ) < epsilonColinear * sizeFactorL ) { // prevent 0
+					
+					dy0 += epsilonColinear * sizeFactorL;
+					
+				}
+				
+				if( Math.abs( ( dx2 / dy2 )  -  ( dx0 / dy0 ) ) < epsilonColinear * sizeFactorL ) { // prevent 0
+					
+					dx0 += epsilonColinear * sizeFactorL;
+					
+				}
+				
+				// unit vectors
+				
+				e0Length = Math.sqrt( dx0 * dx0 + dy0 * dy0 );
+				
+				e0x = dx0 / e0Length;
+				e0y = dy0 / e0Length;
+				
+				e2Length = Math.sqrt( dx2 * dx2 + dy2 * dy2 );
+				
+				e2x = dx2 / e2Length;
+				e2y = dy2 / e2Length;
+				
+				// direction x of R -> transformed to cut plane
+				
+				ex = e0x + e2x;
+				ey = e0y + e2y;
+				
+				eLength = Math.sqrt( ex * ex + ey * ey );
+				
+				ex = ex / eLength;
+				ey = ey / eLength;
+				
+				phi = Math.acos( e2x * e0x + e2y * e0y ) / 2;
+				
+				bend = Math.sign( dx0 * dy2 - dy0 * dx2 ); // z cross -> curve bending
+				
+				xRdiv = Math.sin( phi );
+				
+			}
+			
+			for ( let j = 0; j < rs1; j ++ ) {
+				
+				j3 = 3 * j;
+				//.....................[    ] - 1 x is 1 right in R ...
+				xR = ( gLineR.positions[ j3 ] - 1 ) * sizeFactorR;
+				
+				x = xc1 + xR / xRdiv * bend * ex ; 
+				y = yc1 + xR / xRdiv * bend *  ey;
+				z = gLineR.positions[ j3 + 1 ] * sizeFactorR * ( -1 );  //  -y LineR ->  +z FrameA
+				
+				vIdx = rs1 * i + j;
+				
+				posIdx = vIdx * 3;
+				
+				gFrameA.positions[ posIdx ] = x;
+				gFrameA.positions[ posIdx + 1 ] = y;
+				gFrameA.positions[ posIdx + 2 ] = z;
+				
+			}
+			
+			if( i === 0 && !openEnded ) {
+				
+				gFrameA.positions[ hs1 * rs1 * 3 ] 	   = xc1;
+				gFrameA.positions[ hs1 * rs1 * 3 + 1 ] = yc1;
+				gFrameA.positions[ hs1 * rs1 * 3 + 2 ] = 0;
+				
+			}
+			
+			if( i === hs && !openEnded ) {
+				
+				gFrameA.positions[ hs1 * rs1 * 3 + 3 ] = xc1;
+				gFrameA.positions[ hs1 * rs1 * 3 + 4 ] = yc1;
+				gFrameA.positions[ hs1 * rs1 * 3 + 5 ] = 0;
+				
+			}	
+				
+			gCenterLineA.positions[ i3 ] = xc1;
+			gCenterLineA.positions[ i3 + 1 ] = yc1;
+			gCenterLineA.positions[ i3 + 2 ] = 0;
+			
+		}
+		
+		gFrameA.computeVertexNormals( );
+		
+		frameA = new THREE.Mesh( gFrameA, matFrameA );
+		sceneA.add( frameA );
+		
+		gCenterLineA.attributes.position.needsUpdate = true;
+		
+	}
+	
+}
+
+function createDesignArea( ){
+	
+	const gB2 = new THREE.BufferGeometry( );
+	
+	pos = [];
+	
+	for ( let i = 0; i < 10; i ++ ) {
+		
+		let j = ( i + 0.5 ) / 10;
+		rasterPosPush( j );
+		
+	}
+	
+	gB2.lineCount = 60;
+	
+	gB2.positions = new Float32Array( gB2.lineCount * 6 );
+	
+	for ( let i = 0; i < pos.length; i ++ )	gB2.positions[ i ] = pos[ i ];
+	
+	gB2.setAttribute( 'position', new THREE.BufferAttribute( gB2.positions, 3 ) );
+	
+	const matB2 = new THREE.LineBasicMaterial( { color: 0xdddddd } );
+	const gridB2 = new THREE.LineSegments( gB2, matB2 );
+	sceneB.add( gridB2 );
+	
+	//.....
+	const gB1 = new THREE.BufferGeometry( );
+	
+	pos = [];
+	for ( let i = 1; i < 10; i ++ ) {
+		
+		let j = i / 10;
+		rasterPosPush( j );
+		
+	}
+	
+	gB1.lineCount = 54;
+	
+	gB1.positions = new Float32Array( gB1.lineCount * 6 );
+	
+	for ( let i = 0; i < pos.length; i ++ )	gB1.positions[ i ] = pos[ i ];
+	
+	gB1.setAttribute( 'position', new THREE.BufferAttribute( gB1.positions, 3 ) );
+	
+	const matB1 = new THREE.LineBasicMaterial( { color: 0xcccccc } );
+	const gridB1 = new THREE.LineSegments( gB1, matB1 );
+	sceneB.add( gridB1 );
+	
+	//.....
+	const gB0 = new THREE.BufferGeometry( );
+	pos = [];
+	pos.push( -2,0,0, -0.02,0,0 );	// horizontal
+	pos.push( 0.02,0,0, 2,0,0 );
+	pos.push( -1,-1,0, -1,1,0 );	// vertical
+	pos.push( 1,-1,0, 1,1,0 );	
+	
+	gB0.lineCount = 4;
+	
+	gB0.positions = new Float32Array( gB0.lineCount * 6 );
+	
+	for ( let i = 0; i < pos.length; i ++ )	gB0.positions[ i ] = pos[ i ];
+	
+	gB0.setAttribute( 'position', new THREE.BufferAttribute( gB0.positions, 3 ) );
+	
+	const matB0 = new THREE.LineBasicMaterial( { color: 0x888888 } );
+	const gridB0 = new THREE.LineSegments( gB0, matB0 );
+	sceneB.add( gridB0 );
+	
+	//.....
+	const gBsplit = new THREE.BufferGeometry( );
+	gBsplit.positions = new Float32Array( 6 );
+	gBsplit.positions[ 0 ] = gBsplit.positions[ 2 ] = gBsplit.positions[ 3 ] = gBsplit.positions[ 5 ] = 0;
+	gBsplit.positions[ 1 ] = -1;
+	gBsplit.positions[ 4 ] = 1;
+	gBsplit.setAttribute( 'position', new THREE.BufferAttribute( gBsplit.positions, 3 ) );
+	
+	const matBsplit = new THREE.LineBasicMaterial( { color: 0xffffff } );
+	const gridBsplit = new THREE.LineSegments( gBsplit, matBsplit );
+	sceneB.add( gridBsplit );
+	
+	//.....
+	const markerCenterL = new THREE.Sprite( new THREE.MeshBasicMaterial( { color: 0x333333} ) );
+	matMarkerL = new THREE.MeshBasicMaterial( { color: 0x0000aa, transparent: true, opacity: 0.5 } );
+	matMarkerR = new THREE.MeshBasicMaterial( { color: 0x009900, transparent: true, opacity: 0.5 } );
+	
+	markerSize = 0.015;
+	markerCenterL.rotation.z = Math.PI / 4;
+	markerCenterL.scale.x = markerSize;
+	markerCenterL.scale.y = markerSize;
+	markerCenterL.position.set( -1, 0, 0 );
+	sceneB.add( markerCenterL );
+	
+	const markerCenterR = markerCenterL.clone();  // clone from L
+	markerCenterR.position.set( 1, 0, 0 );
+	sceneB.add( markerCenterR);
+	
+	// detail function
+	function rasterPosPush( j ){
+	
+		pos.push( -2, j, 0,  2, j, 0 );	// horizontal
+		pos.push( -2, -j, 0,  2, -j, 0 );
+		pos.push( -2+j, -1, 0,  -2+j, 1, 0 ); // vertical
+		pos.push( -1+j, -1, 0,  -1+j, 1, 0 );
+		pos.push(  1-j, -1, 0,   1-j, 1, 0 );
+		pos.push(  2-j, -1, 0,   2-j, 1, 0 );
+	}
+
+}
+
+function createReticles( ) {
+	
+	gReticle = new THREE.BufferGeometry( );
+	gReticle.positions = new Float32Array( 4 * 3 );
+	
+	gReticle.positions[  0 ] = 0;
+	gReticle.positions[  1 ] = -0.02;
+	gReticle.positions[  2 ] = 0;
+	
+	gReticle.positions[  3 ] = 0;
+	gReticle.positions[  4 ] = 0.02;
+	gReticle.positions[  5 ] = 0;
+	
+	gReticle.positions[  6 ] = -0.02;
+	gReticle.positions[  7 ] = 0;
+	gReticle.positions[  8 ] = 0;
+	
+	gReticle.positions[  9 ] = 0.02;
+	gReticle.positions[ 10 ] = 0;
+	gReticle.positions[ 11 ] = 0;
+	
+	gReticle.setAttribute( 'position', new THREE.BufferAttribute( gReticle.positions, 3 ) );
+	
+	const matReticle = new THREE.LineBasicMaterial( { color: 0xff0000 } );
+	reticle = new THREE.LineSegments( gReticle, matReticle );
+	reticle.scale.set( 2, 2, 0)
+	sceneB.add( reticle );
+	reticle.visible = false;
+	
+	const matReticleM = new THREE.LineBasicMaterial( { color: 0x444444 } );
+	reticleM = new THREE.LineSegments( gReticle, matReticleM );
+	sceneB.add( reticleM );
+	reticleM.visible = true;
+}
+
+function createLinesLR( ) {
+	
+	matLineL = new THREE.LineBasicMaterial( { color: 0x0000aa } );
+	gLineL = new THREE.BufferGeometry( );
+	gLineL.positions = new Float32Array( linePosCount * 3 );
+	//gLineL.addAttribute( 'position', new THREE.BufferAttribute( gLineL.positions, 3 ).setDynamic( true ) ); // older version
+	gLineL.setAttribute( 'position', new THREE.BufferAttribute( gLineL.positions, 3 ).setUsage( THREE.DynamicDrawUsage ) );
+	
+	gridLineL = new THREE.Line( gLineL, matLineL );
+	sceneB.add( gridLineL );
+	
+	gLineL.setDrawRange ( 0, 0 );
+	
+	matLineR = new THREE.LineBasicMaterial( { color: 0x009900 } );
+	gLineR = new THREE.BufferGeometry( );
+	gLineR.positions = new Float32Array( linePosCount * 3 );
+	//gLineR.addAttribute( 'position', new THREE.BufferAttribute( gLineR.positions, 3 ).setDynamic( true ) );  // older version
+	gLineR.setAttribute( 'position', new THREE.BufferAttribute( gLineR.positions, 3 ).setUsage( THREE.DynamicDrawUsage ) );
+	
+	gridLineR = new THREE.Line( gLineR, matLineR );
+	sceneB.add( gridLineR);
+	
+	gLineR.setDrawRange ( 0, 0 );
+	
+}
+
+function onWindowKeyDown( event ) {
+	
+	if ( event.keyCode === 68 )  key = 'delete'; // d
+	if ( event.keyCode === 73 )  key = 'insert'; // i
+	if ( event.keyCode === 77 )  key = 'move';   // m
+	
+}
+
+function onWindowKeyUp( event ) {
+	
+	key = ''; // reset keyCode
+	
+}
+
+function onContainerBmouseDown( event ) {
+	
+	let xNew, yNew;
+	
+	event.preventDefault();
+	
+	getMarkerXY( event.clientX, event.clientY );
+	
+	if( markerX < 0 ) {  // left
+		
+		if ( key === '' ) {
+			
+			markerCountL ++;
+			
+			markersL[ markerCountL ] = new THREE.Sprite( matMarkerL );
+			markersL[ markerCountL ].position.x = markerX;
+			markersL[ markerCountL ].position.y = markerY;
+			markersL[ markerCountL ].scale.x = markerSize;
+			markersL[ markerCountL ].scale.y = markerSize;
+			
+			sceneB.add( markersL[ markerCountL ] );
+			gLineL.setDrawRange ( 0, markerCountL + 1 );
+			
+			gLineL.positions[ markerCountL * 3 ] = markerX;	
+			gLineL.positions[ markerCountL * 3 + 1 ] = markerY;
+			gLineL.positions[ markerCountL * 3 + 2 ] = 0;
+			
+		}
+		
+		if ( key === 'insert' ) {
+		
+			idxHitL = hitMarkerL( -1, markerX, markerY );
+			idx3HitL = idxHitL / 3;
+			
+			if ( idxHitL !== -1 ) {
+				
+				if ( idxHitL < markerCountL * 3 ) {
+					
+					for ( let i = markerCountL; i > idx3HitL; i -- ) {
+						
+						markersL[ i + 1 ] = markersL[ i ];
+						markersL[ i + 1 ].position.x = markersL[ i ].position.x;
+						markersL[ i + 1 ].position.y = markersL[ i ].position.y;
+						
+					}
+					
+					markerCountL ++;
+					
+					markersL[ idx3HitL + 1 ] = new THREE.Sprite( matMarkerL );
+					
+					xNew = Math.round( 100 * ( markersL[ idx3HitL ].position.x + markersL[ idx3HitL + 2 ].position.x ) / 2 ) / 100;
+					yNew = Math.round( 100 * ( markersL[ idx3HitL ].position.y + markersL[ idx3HitL + 2 ].position.y ) / 2 ) / 100; 
+					
+					markersL[ idx3HitL + 1 ].position.x = xNew;
+					markersL[ idx3HitL + 1 ].position.y = yNew;
+					markersL[ idx3HitL + 1 ].scale.x = markerSize;
+					markersL[ idx3HitL + 1 ].scale.y = markerSize;
+					
+					sceneB.add( markersL[ idx3HitL + 1 ] );
+					gLineL.setDrawRange ( 0, markerCountL + 1 );
+					
+					for ( let i = markerCountL * 3; i > idxHitL; i -= 3 ) {
+						
+						gLineL.positions[ i + 3 ] = gLineL.positions[ i ];
+						gLineL.positions[ i + 3 + 1 ] = gLineL.positions[ i + 1 ];
+						gLineL.positions[ i + 3 + 2 ] = gLineL.positions[ i + 2 ];
+						
+					}
+					
+					gLineL.positions[ idxHitL + 3 ] = xNew;
+					gLineL.positions[ idxHitL + 3 + 1 ] = yNew;
+					gLineL.positions[ idxHitL + 3 + 2 ] = 0;
+					
+				}
+				
+			}
+			
+		}
+		
+		if (  key === 'delete' ) {
+			
+			idxHitL = hitMarkerL( -1, markerX, markerY );
+			idx3HitL = idxHitL / 3;
+			
+			if ( idxHitL !== -1 ) {
+				
+				for ( let j = idxHitL; j < markersL.length * 3 - 3; j += 3 ) {
+				
+					gLineL.positions[ j ] = gLineL.positions[ j + 3 ];
+					gLineL.positions[ j + 1 ] = gLineL.positions[ j + 4 ];
+					
+				}
+				
+				sceneB.remove( markersL[ idx3HitL ] );
+				markersL[ idx3HitL ].geometry.dispose();
+				
+				for ( let j = idx3HitL; j < markersL.length - 1; j ++ ) {
+					
+					markersL[ j ] = markersL[ j + 1 ];
+					
+				}
+				
+				markerCountL --;
+				
+				gLineL.setDrawRange ( 0, markerCountL + 1 );
+				
+			}
+			
+		}
+		
+		if (  key === 'move' ) {
+			
+			idxMoveL = hitMarkerL( -1, markerX, markerY );
+			
+		}
+		
+		gLineL.attributes.position.needsUpdate = true;
+		redrawSceneA( );
+		
+	}
+	
+	if( markerX > 0 ) { // right
+		
+		if ( key === '' ) { 
+			
+			markerCountR ++;
+			
+			markersR[ markerCountR ] = new THREE.Sprite( matMarkerR );
+			markersR[ markerCountR ].position.x = markerX;
+			markersR[ markerCountR ].position.y = markerY;
+			markersR[ markerCountR ].scale.x = markerSize;
+			markersR[ markerCountR ].scale.y = markerSize;
+			
+			sceneB.add( markersR[ markerCountR ] );
+			gLineR.setDrawRange ( 0, markerCountR + 1 );
+			
+			gLineR.positions[ markerCountR * 3  ] = markerX;
+			gLineR.positions[ markerCountR * 3 + 1 ] = markerY;
+			gLineR.positions[ markerCountR * 3 + 2 ] = 0;
+			
+		}
+		
+		if ( key === 'insert' ) {
+			
+			idxHitR = hitMarkerR( -1, markerX, markerY );
+			idx3HitR = idxHitR / 3;
+			
+			if ( idxHitR !== -1 ) {
+				
+				if ( idxHitR < markerCountR * 3 ) {
+					
+					for ( let i = markerCountR; i > idx3HitR; i -- ) {
+						
+						markersR[ i + 1 ] = markersR[ i ];
+						markersR[ i + 1 ].position.x = markersR[ i ].position.x;
+						markersR[ i + 1 ].position.y = markersR[ i ].position.y;
+						
+					}
+					
+					markerCountR ++;
+					
+					markersR[ idx3HitR + 1 ] = new THREE.Sprite( matMarkerR );
+					
+					xNew = Math.round( 100 * ( markersR[ idx3HitR ].position.x + markersR[ idx3HitR + 2 ].position.x ) / 2 ) / 100;
+					yNew = Math.round( 100 * ( markersR[ idx3HitR ].position.y + markersR[ idx3HitR + 2 ].position.y ) / 2 ) / 100; 
+					
+					markersR[ idx3HitR + 1 ].position.x = xNew;
+					markersR[ idx3HitR + 1 ].position.y = yNew;
+					markersR[ idx3HitR + 1 ].scale.x = markerSize;
+					markersR[ idx3HitR + 1 ].scale.y = markerSize;
+					
+					sceneB.add( markersR[ idx3HitR + 1 ] );
+					gLineR.setDrawRange ( 0, markerCountR + 1 );
+					
+					for ( let i = markerCountR * 3; i > idxHitR; i -= 3 ) {
+						
+						gLineR.positions[ i + 3 ] = gLineR.positions[ i ];
+						gLineR.positions[ i + 3 + 1 ] = gLineR.positions[ i + 1 ];
+						gLineR.positions[ i + 3 + 2 ] = gLineR.positions[ i + 2 ];
+						
+					}
+					
+					gLineR.positions[ idxHitR + 3 ] = xNew;
+					gLineR.positions[ idxHitR + 3 + 1 ] = yNew;
+					gLineR.positions[ idxHitR + 3 + 2 ] = 0;
+					
+				}
+				
+			}
+			
+		}
+		
+		if (  key === 'delete' ) {
+		
+			idxHitR = hitMarkerR( -1, markerX, markerY );
+			idx3HitR = idxHitR / 3;
+			
+			if ( idxHitR !== -1 ) {
+				
+				for ( let j = idxHitR; j < markersR.length * 3 - 3; j += 3 ) {
+					
+					gLineR.positions[ j ] = gLineR.positions[ j + 3 ];
+					gLineR.positions[ j + 1 ] = gLineR.positions[ j + 4 ];
+					
+				}
+				
+				sceneB.remove( markersR[ idx3HitR ] );
+				markersR[ idx3HitR ].geometry.dispose();
+				
+				for ( let j = idx3HitR; j < markersR.length - 1; j ++ ) {
+					
+					markersR[ j ] = markersR[ j + 1 ];
+					
+				}
+				
+				markerCountR --;
+				
+				gLineR.setDrawRange ( 0, markerCountR + 1 );
+				
+			}
+			
+		}
+		
+		if (  key === 'move' ) {
+			
+			idxMoveR = hitMarkerR( -1, markerX, markerY );
+			
+		}
+		
+		gLineR.attributes.position.needsUpdate = true;
+		redrawSceneA( );
+		
+	}
+	
+}
+
+function onContainerBMouseMove( event ) {
+	
+	event.preventDefault();
+	
+	getMarkerXY( event.clientX, event.clientY );
+	
+	reticle.position.set( markerX, markerY, 0 );
+	
+	xyValue.style.left = event.clientX + 10 + "px";
+	xyValue.style.top = event.clientY - 10 +"px";
+	
+	if( markerX === 0 ) {
+		
+		reticleM.visible = false;
+		
+	}
+	
+	if( markerX < 0 ) { // left
+		
+		xyValue.innerHTML = Math.round( 10000 *( markerX + 1 ) * sizeFactorL ) / 10000 + " ▪ " + Math.round( 10000 * markerY * sizeFactorL ) / 10000;
+		
+		if ( hitMarkerL( idxMoveL, markerX, markerY ) === -1 ) {
+			
+			reticleM.visible = true;
+			reticle.visible = false;
+			reticleM.position.set( markerX, markerY, 0 );
+			xyValue.style.color = "#666600";
+			
+			
+		} else {  
+			
+			reticleM.visible = false;
+			reticle.visible = true;
+			reticle.position.set( markerX, markerY, 0 );
+			xyValue.style.color = "#ff0000";
+			
+		}
+		
+		if ( key === 'move' && idxMoveL !== -1 ) {
+			
+			if ( !checkHitL( idxMoveL - 3 )	&&	!checkHitL( idxMoveL + 3 ) ) {
+				
+				markersL[ idxMoveL / 3 ].position.x = markerX;
+				markersL[ idxMoveL / 3 ].position.y = markerY;
+				
+				gLineL.positions[ idxMoveL ] = markerX;
+				gLineL.positions[ idxMoveL + 1 ] = markerY;
+				
+				gLineL.attributes.position.needsUpdate = true;
+				
+			}
+			
+		}
+		
+	}
+	
+	if( markerX > 0 ) { // right
+		
+		xyValue.innerHTML = Math.round( 10000 *( markerX - 1 )  * sizeFactorR ) / 10000  + " ▪ " + Math.round( 10000 * markerY * sizeFactorR ) / 10000;
+		
+		if ( hitMarkerR( idxMoveR, markerX, markerY ) === -1 ) {
+			
+			reticleM.visible = true;
+			reticle.visible = false;
+			reticleM.position.set( markerX, markerY, 0 );
+			xyValue.style.color = "#666600";
+			
+		} else {
+			
+			reticleM.visible = false;
+			reticle.visible = true;
+			reticle.position.set( markerX, markerY, 0 );
+			xyValue.style.color = "#ff0000";
+			
+		}
+		
+		if ( key === 'move' && idxMoveR !== -1 ) {
+			
+			if ( !checkHitR( idxMoveR - 3 )	&&	!checkHitR( idxMoveR + 3 ) ) {
+				
+				markersR[ idxMoveR / 3 ].position.x = markerX;
+				markersR[ idxMoveR / 3 ].position.y = markerY;
+				
+				gLineR.positions[ idxMoveR ] = markerX;
+				gLineR.positions[ idxMoveR + 1 ] = markerY;
+				
+				gLineR.attributes.position.needsUpdate = true;
+				
+			}
+			
+		}
+		
+	}
+	
+}
+
+function onContainerBmouseUp( event ) {
+	
+	event.preventDefault();
+	
+	idxMoveL = -1;
+	idxMoveR = -1;
+	key = '';
+	redrawSceneA( );
+	
+}
+
+function onSliderLRchange( ) {
+	
+	cameraAzPos = 4 * sizeFactorL + 8 * sizeFactorR;
+	cameraA.position.set( 0, 0, cameraAzPos );
+	cameraA.lookAt( 0,0,0 );
+	redrawSceneA( );
+	
+}
+
+function getSizeFactorL( ) {
+	
+	const sizeValueL  =  parseInt( sliderL.value );
+	
+	switch ( sizeValueL ) {
+		
+		case 1: sizeFactorL = 0.1; break;
+		case 2: sizeFactorL = 0.5; break;
+		case 3: sizeFactorL = 1; break;
+		case 4: sizeFactorL = 2; break;
+		case 5: sizeFactorL = 5; break;
+		case 6: sizeFactorL = 10; break;
+		
+	}
+	
+	showSizeL.innerHTML = 'L*' + sizeFactorL.toString();
+	
+}
+
+function getSizeFactorR( ) {
+	
+	const sizeValueR  =  parseInt( sliderR.value );
+	
+	switch ( sizeValueR ) {
+		
+		case 1: sizeFactorR = 0.01; break;
+		case 2: sizeFactorR = 0.1; break;
+		case 3: sizeFactorR = 0.5; break;
+		case 4: sizeFactorR = 1; break;
+		case 5: sizeFactorR = 2; break;
+		case 6: sizeFactorR = 5; break;
+		
+	}
+	
+	showSizeR.innerHTML = 'R*' + sizeFactorR.toString();
+	
+}
+
+function getMarkerXY( ecX, ecY ){
+	
+	// ec   event.client
+	markerX = Math.round( 100 * ( ecX/ widthB * 4 - 2 ) ) / 100;
+	markerY = Math.round( 100 * ( -ecY / heightB * 2 + 1 ) ) / 100;
+	
+}
+
+function hitMarkerL( idx, markerX, markerY ) {
+	
+	let hitL = false;
+	
+	let j = markerCountL * 3 + 3;
+	
+	while ( !hitL &&  j > 2  ) {
+		
+		j -= 3;
+		
+		if ( j !== idx ) {
+			
+			hitL = checkHitL( j );
+			
+		}
+		
+	}
+	
+	return hitL && ( j !== idx ) ? j : -1; // idxHitL
+	
+}
+
+function hitMarkerR( idx, markerX, markerY ) {
+	
+	let hitR = false;
+	
+	let j = markerCountR * 3 + 3;
+	
+	while ( !hitR &&  j > 2  ) {
+		
+		j -= 3;
+		
+		if ( j !== idx ) {
+			
+			hitR = checkHitR( j );
+			
+		}
+		
+	}
+	
+	return hitR && ( j !== idx ) ? j : -1; // idxHitR
+	
+}
+
+function checkHitL( j ) {
+	
+	const epsilon = 0.004;
+	let hitL;
+	
+	let	x0 = gLineL.positions[ j ] - epsilon;
+	let	x1 = gLineL.positions[ j ] + epsilon;
+	let	y0 = gLineL.positions[ j + 1 ] - epsilon;
+	let	y1 = gLineL.positions[ j + 1 ] + epsilon;
+	
+	return hitL = ( markerX > x0 ) && ( markerX < x1 ) && ( markerY > y0 ) && ( markerY < y1 );
+	
+}
+
+function checkHitR( j ) {
+	
+	const epsilon = 0.004;
+	let hitR;
+	
+	let	x0 = gLineR.positions[ j ] - epsilon;
+	let	x1 = gLineR.positions[ j ] + epsilon;
+	let	y0 = gLineR.positions[ j + 1 ] - epsilon;
+	let	y1 = gLineR.positions[ j + 1 ] + epsilon;
+	
+	return hitR = ( markerX > x0 ) && ( markerX < x1 ) && ( markerY > y0 ) && ( markerY < y1 );
+	
+}
+
+function showHelp( ) {
+	
+	if ( en.checked) {
+		
+		helpRows.innerHTML = hlpEN;
+		
+	}
+	
+	if ( de.checked) {
+		
+		helpRows.innerHTML = hlpDE;
+		
+	}
+	
+	helpOutput.style.display = "";
+	
+}
+
+function hideHelp( ) { 
+	
+	helpOutput.style.display = "none";
+	
+}
+
+function showHelpText( ) {
+	
+	showHelp( );
+	
+}
+
+function showOutput( ) {
+	
+	codeOutput.style.display = "";
+	
+}
+
+function hideOutput( ) {
+	
+	codeLines.value = "";
+	codeOutput.style.display = "none";
+	
+}
+
+function outputJavaScript( ) {
+	
+	showOutput( );
+	codeLines.value = "";
+	
+	if ( markersL.length > 1 && markersR.length > 1) {
+		
+		const pc =  gFrameA.positions.length;
+		const ic =  gFrameA.indices.length;
+		const gc =  gFrameA.groups.length;
+		const ffd = Math.pow( 10, nDec.value );
+		const id = fID.value;
+		
+		const round = ( x ) => ( Math.floor( x * ffd ) / ffd ); // round for output
+		
+		let code;
+		let out = "";
+		
+		// --- generate JavaScript code ---
+		
+		out = "/*... BufferGeometry ID " + id + " generated with ConstructFrame.html ...*/ \n\n";
+				
+		out += "gFrame[ " + id + " ] = new THREE.BufferGeometry();\n";
+		
+		out += "gFrame[ " + id + " ].indices = new Uint32Array( [ ";
+		
+		for ( let i = 0; i < ic; i ++ ) {
+			
+			out +=  gFrameA.indices[ i ];
+			out += i < ic - 1  ? ", " : "";
+			
+		}
+		
+		out += " ] );\n";
+		
+		out += "gFrame[ " + id + " ].positions = new Float32Array( [ ";
+		
+		for ( let p = 0; p < pc ; p ++ ) {
+			
+			out += round( gFrameA.positions[ p ] );
+			out += p < pc - 1  ? ", " : "";
+			
+		}
+		
+		out += " ] );\n";
+		
+		out += "gFrame[ " + id + " ].setIndex( new THREE.BufferAttribute(  gFrame[ " + id + " ].indices, 1 ) );\ngFrame[ " + id + " ].setAttribute( 'position', new THREE.BufferAttribute(  gFrame[ " + id + " ].positions, 3 ) );\n";
+		
+		out += "gFrame[ " + id + " ].grp = [ ";
+		
+		for ( let f = 0, p = 0; f < gc ; f ++, p += 3 ) { 
+			
+			out +=  gFrameA.groups[ f ].start + ", " +  gFrameA.groups[ f ].count + ", " +  gFrameA.groups[ f ].materialIndex ;
+			out += f < gc - 1  ? ", " : "";
+			
+		}
+		
+		out += " ];\n";
+		
+		out += "for ( let f = 0, p = 0; f < " + gc + "; f ++, p += 3 ) { gFrame[ " + id + " ].addGroup( gFrame[ " + id + " ].grp[ p ], gFrame[ " + id + " ].grp[ p + 1 ], gFrame[ " + id + " ].grp[ p + 2 ] ); }\n";
+		
+		out += "gFrame[ " + id + " ].computeVertexNormals();\n"; 
+		
+		codeLines.value = out;
+		codeLines.select();
+		
+	}
+	
+}
+
+function render( ) {
+	
+	rendererA.render( sceneA, cameraA );
+	rendererB.render( sceneB, cameraB );
+	
+}
+
+function initComparisons( ) {
+	
+	containerB.style.width = ( 0.75 * containerB.offsetWidth ) + 'px';
+	containerB.style.height = ( 0.75 * containerB.offsetHeight ) + 'px';
+	
+	let pX = containerB.offsetWidth;
+	let pY = containerB.offsetHeight;
+	
+	if ( pX > widthB ) {
+		
+		sliderAB.style.left = widthB - 15 + "px";
+		
+	} else {
+		
+		sliderAB.style.left = pX - 15 + "px";
+		
+	}
+	
+	if ( pY > heightB ) {
+		
+		sliderAB.style.top = heightB - 15 + "px";
+		
+	} else {
+		
+		sliderAB.style.top = pY - 15 + "px";
+		
+	}
+	
+	let clicked = 0;
+	
+	// only controlsA
+	const slideReady = () => {
+		clicked = 1;
+		controlsA.enabled = false;
+	};
+	
+	const slideFinish = () => { 
+		clicked = 0;
+		controlsA.enabled = true;
+	};
+	
+	const slideMove = ( e ) => {
+		
+		if ( clicked === 0 ) return false;
+		
+		let posX = getCursorPosX( e );
+		let posY = getCursorPosY( e );
+		
+		//prevent the slider from being positioned outside the canvas
+		if ( posX < 0 ) posX = 0;  
+		if ( posX > widthB ) posX = widthB;
+		slideX( posX );
+		
+		if ( posY < 0 ) posY = 0;   
+		if ( posY > heightB ) posY = heightB; 
+		slideY( posY );
+		
+	}
+	
+	//detail functions
+	function getCursorPosX( e ) {
+		
+		let getCur = ( e.pageX - containerB.offsetLeft ) - window.pageXOffset;
+		return getCur; 
+		
+	}
+	
+	function getCursorPosY( e ) {
+		
+		let getCur = ( e.pageY - containerB.offsetTop ) - window.pageYOffset;
+		return getCur; 
+		
+	}
+	
+	function slideX(x) {
+		
+		containerB.style.width = x + "px";
+		//position the slider
+		sliderAB.style.left = containerB.offsetWidth - ( 0.5 * sliderAB.offsetWidth -15 ) + "px";
+		
+	}
+	
+	function slideY(y) {
+		
+		containerB.style.height = y + "px";
+		//position the slider
+		sliderAB.style.top = containerB.offsetHeight - ( 0.5 * sliderAB.offsetHeight  -15 ) + "px";
+		
+	}
+	
+	sliderAB.addEventListener( 'mousedown', slideReady );
+	window.addEventListener( 'mouseup', slideFinish );
+	window.addEventListener( 'mousemove', slideMove );
+	
+}
+
+function defineHelpText( ){
+	
+	hlpEN += "<br> <br> The size of the construction area can be changed with the blue dot. In the right grid you construct the profile cross-section, in the left grid the frame profile. For a meaningful export at least two points each must be set.<br><br>";
+	
+	hlpEN += "Set points with the mouse. The crosshair snap into place. The crosshair are displayed in red on an existing point. The line can then be closed with a mouse click or the construction can be edited with pressed keys d (delete) i (insert) m (move, mouse movement). With i the point in the middle is inserted to the next point and can then be moved with m as desired.<br><br>";
+	
+	hlpEN += "Behind the construction the frame is updated after each change. You can move and rotate the display there as you like. If the browser window goes over two monitors, this is particularly practical.<br><br>";
+	
+	hlpEN += "The scale of the two construction grids can be adjusted independently of each other with the sliders. The current factor is displayed and becomes effective immediately.<br><br>";
+	
+	hlpEN += "The construction can be exported at any time. An existing export is overwritten. The complete definition of a three.js BufferGeometry is created. <br> This is already marked and can be copied directly into the own project with Ctrl C / V. The designation is designed as an element of the array gFrame[], the index (ID) is to be selected. Behind it the number of decimal places is to be specified. <br><br>";
+	
+	hlpEN += "It can be selected that the ends are not closed. Two variants are available for the multi-material. The material definition itself is not exported and has to be done in the target application.";
+	
+	// de ..............
+	
+	hlpDE += "<br> <br>Die Gr&ouml;&szlig;e der Konstruktionsfl&auml;che ist mit dem blauen Punkt &auml;nderbar. Im rechten Raster konstruiert man den Profilquerschnitt, im linken das Rahmenprofil. F&uuml;r einen sinnvollen Export m&uuml;dssen mindestens je zwei Punkte gesetzt sein.<br><br>";
+	
+	hlpDE += "Punkte mit der Maus setzen. Das Fadenkreuz rastet ein. Auf einem vorhandenen Punkt wird das Fadenkreuz rot dargestellt. Dann kann mit Mausklick die Linie geschlossen werden oder mit gedr&uuml;cten Tasten d (l&ouml;schen) i ( einf&uuml;gen) m (verschieben, Mausbewegung) die Konstruktion bearbeitet werden. Bei i wird der Punkt in der Mitte zum n&auml;chsten Punkt eingef&uuml;gt und kann dann mit m beliebig verschoben werden.<br><br>";
+	
+	hlpDE += "Hinter der Konstruktion wird der Rahmen nach jeder &Auml;nderung aktualisiert. Man kann die Darstellung dort beliebig bewegen und drehen. Geht das Browserfenster &uuml;ber zwei Monitore, ist das besonders praktisch.<br><br>";
+	
+	hlpDE += "Der Ma&szlig;stab der beiden Konstruktionsraster kann mit den Schiebern unabh&auml;ngig voneinander eingestellt werden. Der aktuelle Faktor wird angezeigt und sofort wirksam.<br>";
+	
+	hlpDE += "Die Konstruktion kann jederzeit exportiert werden. Ein vorhandener Export wird &uuml;berschrieben. Es wird die komplette Definition einer three.js BufferGeometry erzeugt. <br> Diese ist bereits markiert und kann mit Strg C / V unmittelbar in das eigene Projekt kopiert werden. Die Bezeichnung ist als Element des Feldes gFrame[] gestaltet, der Index (ID) ist zu w&auml;hlen. Dahinter ist die Anzahl der Dezimalstellen anzugeben.<br><br>";
+	
+	hlpDE += "Es kann ausgew&auml;hlt werden, dass die Enden nicht geschlossen sind. F&uuml;r das Multimaterial stehen zwei Varianten zur Verf&uuml;gung. Die Materialdefinition selbst wird nicht exportiert und hat in der Zielanwendung zu erfolgen.";
+}
+
+</script>
+</html>

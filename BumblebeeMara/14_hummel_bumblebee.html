@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="de">
+<head> <meta charset="utf-8">
+	<title> Mara </title>
+</head>
+<body> 
+	<div style="position: absolute; top: 20px; left: 25px; text-align:left;">
+	<div > Bumblebee / Hummel  Mara </br>
+		<label><input type="checkbox" id="bewegen">move / bewege </label>
+		<div id="output">  ... 	</div>
+	</div>
+</body>
+<script src="../js/three.min.84.js"></script>
+<script src="../js/OrbitControls.js"></script>
+<script> 
+		opt = document.getElementById("output");  // output !!!!!!!!!!!!!!!!!!!!!
+//Ereignisse	
+document.getElementById('bewegen').checked = false;
+window.addEventListener( 'resize', function () {
+			camera.aspect = window.innerWidth / window.innerHeight;
+			renderer.setSize( window.innerWidth, window.innerHeight );	},	false 
+);	
+// Szene, Kamera, Renderer, div-Container, Controls, Licht 
+scene = new THREE.Scene();
+camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.1, 20000 );
+camera.position.set(-400,200,400);
+renderer = new THREE.WebGLRenderer( { antialias: true } );
+renderer.setPixelRatio( window.devicePixelRatio );
+renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setClearColor( 0xbbffcc, 1 );	
+container = document.createElement('div');
+document.body.appendChild(container);
+container.appendChild(renderer.domElement); 	
+orbit = new THREE.OrbitControls( camera, renderer.domElement );
+orbit.enableZoom = true;
+light1 = new THREE.PointLight(0xffffff,1,0); 
+light2 = light1.clone(); 
+light1.position.set( -100, 300, 1000 ); 
+light2.position.set(    0, 800, -500 );  	
+scene.add(light1);						 // Licht von zwei Seiten
+scene.add(light2); 
+clock  = new THREE.Clock(true);
+// Geometrie
+rSegmentCount = 36; // radiale Segmente fuer Kopf, Koerper, Glieder
+// Hals
+geometryNeck = new THREE.OctahedronGeometry(10,2);
+// Kopf
+outlineHead = [
+ [8,5],[18,6],[25,7],[30,8],[35,10],[40,12.5],[45,15],[50,19],[54,25],[57,30],[59,35],[60,40],[61,45],[62,55],[61,65],[59,75],[57,80],[54,85],[50,90],[44,95],[40,97.5],[35,100],[29,101.5],[20,103],[10,104],[0.01,104.5]  
+];
+pointsHead = [];    // vector2 Punkte der x-y Ebene, die um die y- Achse rotiert werden ergeben Drehteil
+for ( var i = 0; i < outlineHead.length ; i++ ) {
+   pointsHead.push(new THREE.Vector2(outlineHead[i][0], outlineHead[i][1]))
+}		
+geometryHead = new THREE.LatheGeometry( pointsHead, rSegmentCount);  // Drehteil (Drehung um y-Achse in three.js Revision 83)
+rSeg = 32; // Segmente Radius fuer Hut, Auge, Pupille, Mund
+hSeg = 16; // Segmente Hoehe 
+rHat = 80, hHat = 30;
+geometryHat  = new THREE.CylinderGeometry(0, rHat, hHat, rSeg, hSeg, true); 			// Hut
+hatVertLen = geometryHat.vertices.length;	
+ for(var i = 1; i < hatVertLen    ; i++ ){
+	 geometryHat.vertices[i].y = hHat*Math.cos( 3.14*(Math.floor((i-1)/ rSeg) +1) / hSeg ) ; // Verformung
+} 
+rEye = 8, hEye = 8, rSeg = 24, hSeg = 12;												// Auge
+geometryEye  = new THREE.CylinderGeometry(0, rEye, hEye, rSeg, hSeg);   	
+eyeVertLen = geometryEye.vertices.length;
+	for(var i = 0; i < eyeVertLen ; i++ ){	    
+	    geometryEye.vertices[i].y = hEye*Math.cos( i/ rSeg / hSeg )	 					// "rund" machen
+	}
+geometryPupil = new THREE.CylinderGeometry(0, 0.5*rEye, 0.5*hEye, rSeg, hSeg); 			// Pupille
+pupilVertLen = geometryPupil.vertices.length;
+	for(var i = 0; i < pupilVertLen ; i++ ){	    
+	    geometryPupil.vertices[i].y = 0.5*hEye*Math.cos( i/ rSeg / hSeg )	 			// "rund" machen
+	}
+geometryNose = 	new THREE.OctahedronGeometry(4, 2); 									// Nase	
+rMouth = 2.5, hMouth = 25;
+geometryMouth  = new THREE.CylinderGeometry(rMouth, rMouth, hMouth, rSeg, hSeg, false); // Mund
+mouthVertLen = geometryMouth.vertices.length;
+for(var i = 1; i < mouthVertLen    ; i++ ){
+	u = (Math.floor((i-1)/ rSeg) +1) / hSeg;
+	x =  6.2 *Math.sin( 3.14*u );  														// Verformung
+	geometryMouth.vertices[i].x +=  x;  			
+} 
+// Koerper - Drehteil mit Knochen/ Skelett
+bodyHeight 			= 80;		// Hoehe gesamt
+boneBodyCount 		=  4;		// Anzahl Knochen
+boneBodySegCount 	=  4;       // Segmente je Knochen
+bodySegHeightCount	=  boneBodySegCount * boneBodyCount; // Anzahl Segmente gesamt hoch 
+boneBodyHeight		= bodyHeight / boneBodyCount ;	// Hoehe Knochen
+outlineBody = [			// 15 Segmente
+ [0.01,-bodyHeight ],[10,-79.75],[20,-79.25],[30,-76],[35,-75],[40,-70],[42,-65],[44,-60],[45,-55],[45,-50],[44,-45],[41,-35],[36,-27],[31,-20],[17.5,-10],[10,0] //  -bodyHeight  bis 0
+];	
+pointsBody = [];   // vector2 Punkte der x-y Ebene, die um die y- Achse rotiert werden ergeben Drehteil
+for ( var i = 0; i < outlineBody.length ; i++ ) {
+   pointsBody.push(new THREE.Vector2(outlineBody[i][0], outlineBody[i][1]))
+}
+geometryBody = new THREE.LatheGeometry( pointsBody, rSegmentCount );  // Drehteil (Drehung um y-Achse in three.js Revision 83)
+for ( var i =0; i<geometryBody.vertices.length; i++ ) {    // zu allen Knoten:
+	vertexY =  geometryBody.vertices[ i ].y ;           			
+	skinIndex = boneBodyCount-1 - Math.floor((i % bodySegHeightCount)/ boneBodySegCount) ;  // skin-Index bestimmen (Knochen Nr. 0 oben) 	   
+	skinWeight = ( (bodyHeight - vertexY)  %  boneBodyHeight ) / boneBodyHeight ;        	// Gewichtung dazu
+	geometryBody.skinIndices.push( new THREE.Vector4(    skinIndex, skinIndex+1, 0, 0 ) );  // Zuordnung (zwei von max. vier Knochen)
+	geometryBody.skinWeights.push( new THREE.Vector4( 1-skinWeight, skinWeight , 0, 0 ) );	
+}
+geometryBody.vertices[275].y -= 14; // Stachel rausziehen
+geometryBody.vertices[275].z -= 10;
+//Fluegel
+wSx = 0, wSy = 0;
+wingsShape = new THREE.Shape();		   // zwei Hilfspunkte			// Zielpunkt
+wingsShape.moveTo( wSx + 5, wSy +16 );
+wingsShape.bezierCurveTo( wSx + 5, wSy + 5, wSx + 4, wSy,			wSx, 	  wSy 		);
+wingsShape.bezierCurveTo( wSx - 6, wSy, wSx - 6, wSy + 7,			wSx - 6,  wSy + 7 	);
+wingsShape.bezierCurveTo( wSx - 6, wSy + 11, wSx - 3, wSy + 15.4, 	wSx + 5,  wSy + 25	);
+wingsShape.bezierCurveTo( wSx + 12, wSy + 15.4, wSx + 16, wSy + 11, wSx + 16, wSy + 7	);
+wingsShape.bezierCurveTo( wSx + 16, wSy + 7, wSx + 16, wSy,			wSx + 10, wSy 		);
+wingsShape.bezierCurveTo( wSx + 7, wSy, wSx + 5, wSy + 5,           wSx +  5,  wSy + 16 );
+geometryWings = new THREE.ShapeGeometry( wingsShape );
+//Glieder (Arme, Beine - Zylinder mit Knochen)
+limbRadius	    =  4;				// Radius 
+limbHeight    	= 60;				// Laenge Glied (Hoehe Zylinder)
+boneLimbCount	=  3; 			 	// Anzahl Knochen
+boneLimbSegCount=  3;				// Segmente je Knochen
+limbRadSegCount	=  0.5*rSegmentCount; 			// Anzahl Segmente radial
+limbHeightSegCount=  boneLimbSegCount*boneLimbCount;// Anzahl Segmente gesamt hoch 
+boneLimbHeight	= limbHeight/ boneLimbCount ;		// Hoehe Knochen
+limbHalfHeight	= limbHeight * 0.5;					// halbe Laenge Arm (halbe Hoehe Zylinder) 
+openEnded 		= false; 			
+geometryLimbs = [];
+for (var i=0; i<4;i++){  // vier Glieder
+  geometryLimbs[i] = new THREE.CylinderGeometry(limbRadius,limbRadius,limbHeight,limbRadSegCount,limbHeightSegCount,openEnded);
+}
+// Datenfelder der unsichtbaren Knochen K&ouml;rper, Glieder (Anfangsknochen Position y, Hoehe, Anzahl)
+bonesBody	  = createBones( 0 ,-boneBodyHeight, boneBodyCount);
+bonesLimbs = [];
+for (var i=0; i<4; i++){
+  bonesLimbs[i] = createBones( -limbHalfHeight, boneLimbHeight, boneLimbCount);
+}
+// Material
+materialHead = new THREE.MeshPhongMaterial({ color: 0x997711, emissive: 0xaa6600, wireframe: false});
+materialHat  = new THREE.MeshPhongMaterial({ color: 0xff55ff, emissive: 0xeff66ff, side: THREE.DoubleSide,shading: THREE.FlatShading, 
+  											 transparent: true, opacity: 0.85, wireframe: false });
+materialHair = new THREE.MeshPhongMaterial({ color: 0x222205, emissive: 0x182003, wireframe: false});
+materialEye  = new THREE.MeshPhongMaterial({ color: 0xffffff, emissive: 0xeeeeee, wireframe: false});
+materialPupil= new THREE.MeshPhongMaterial({ color: 0x000033, emissive: 0x000055, wireframe: false});
+fur = new THREE.TextureLoader().load("fur.png");
+materialBody = new THREE.MeshBasicMaterial({ map: fur, wireframe: false, skinning: true });	// skinning, um Knoten mit dem Skelett zu bewegen
+materialWings= new THREE.MeshPhongMaterial({ color: 0xddffff, emmissive: 0xddeeff, side: THREE.DoubleSide,  transparent: true, opacity: 0.9});
+materialLimb = new THREE.MeshPhongMaterial({ color: 0x896215, emissive: 0xa96415, wireframe: false, skinning: true});	
+// Netze aus Geometrie und Material, Teile anheften, positionieren
+meshHead = new THREE.Mesh( geometryHead, materialHead );
+meshHat  = new THREE.Mesh( geometryHat,materialHat); 	  
+meshHead.add(meshHat);
+meshHat.position.set( 10, 102, -10 );
+meshHat.rotation.x = -0.2;
+meshHat.rotation.z = -0.2;
+meshEyeRight = new THREE.Mesh( geometryEye, materialEye );
+meshHead.add(meshEyeRight);
+meshEyeRight.rotation.set ( 1.57, 0, 0.2  );
+meshEyeRight.position.set(-15, 55, 55 );
+meshPupilRight = new THREE.Mesh( geometryPupil, materialPupil);
+meshPupilRight.position.set( 0.2*hEye, 0.65*hEye, 0.2*hEye );
+meshEyeRight.add(meshPupilRight);
+meshEyeLeft = new THREE.Mesh( geometryEye, materialEye );
+meshHead.add(meshEyeLeft);
+meshEyeLeft.rotation.x = 1.57;
+meshEyeLeft.rotation.z = -0.2;
+meshEyeLeft.position.set( 15, 55, 55 )
+meshPupilLeft = new THREE.Mesh( geometryPupil, materialPupil);
+meshPupilLeft.position.set( 0.2*hEye, 0.65*hEye, 0.2*hEye );
+meshEyeLeft.add(meshPupilLeft);
+meshNose = new THREE.Mesh(  geometryNose , materialHead ); 
+meshHead.add(meshNose);
+meshNose.position.set( 0, 42, 61);
+meshMouth = new THREE.Mesh( geometryMouth, materialHat );  	
+meshHead.add(meshMouth);
+meshMouth.position.set( 0, 32, 53);
+meshMouth.rotation.z = - 1.57;
+meshNeck  = new THREE.Mesh( geometryNeck, materialHead );
+meshBody  = new THREE.SkinnedMesh( geometryBody, materialBody );
+meshWings = new THREE.Mesh( geometryWings, materialWings ) ;
+meshNeck.add( meshWings );								
+meshWings.position.set( -10, -23, -90);
+meshWings.rotation.x = 1.3;
+meshWings.scale.set( 2.5, 4, 0);
+meshBody.add( meshNeck );					
+meshNeck.add( meshHead );	
+meshesLimbs0 = [];
+for (var i=0; i<4;i++){
+  meshesLimbs0[i] = new THREE.SkinnedMesh(  geometryLimbs[i], materialLimb ); // Glieder
+}
+halfSphereGeometrie = new THREE.SphereGeometry(7,16,16);    // Hand, Fuss
+vertLen = halfSphereGeometrie.vertices.length; 
+	for(var i=0; i < vertLen / 2 ;i++){   					// Form aendern zur Halbkugel mit Hoehlung
+	    if  (i < vertLen / 4  ) {     
+	    	halfSphereGeometrie.vertices[i].y = -halfSphereGeometrie.vertices[i].y / 4;
+	    }else {
+			halfSphereGeometrie.vertices[i].y = 0;
+		}  
+	 }  	 
+halfSphere = new THREE.SkinnedMesh( halfSphereGeometrie, materialLimb); 
+halfSphere.position.y = limbHalfHeight + 3.5;
+geometrysLimbs = [];
+meshesLimbs = [];
+for (var i = 3; i > -1; i--){               // Haende/ Fuesse zu Beinen/ Armen zufuegen
+	geometrysLimbs[i] = new THREE.Geometry();
+	geometrysLimbs[i].merge(meshesLimbs0[i].geometry, meshesLimbs0[i].matrix);
+	if (i<2) halfSphere.rotation.x = 1.57;  // Hand drehen 
+	halfSphere.updateMatrix();
+	geometrysLimbs[i].merge(halfSphere.geometry,halfSphere.matrix);
+	skinIndexWeightCylinder(geometrysLimbs[i]);
+	meshesLimbs[i] =  new THREE.SkinnedMesh( geometrysLimbs[i] , materialLimb  );
+}
+//Glieder positionieren 
+meshesLimbs[0].rotation.z =  1.57;   				// Arm rechts 
+meshesLimbs[0].position.x = -limbHalfHeight;
+meshesLimbs[1].rotation.z =  -1.57;  				// Arm links 
+meshesLimbs[1].position.x =  limbHalfHeight;	
+meshesLimbs[2].position.x = -limbHeight*0.3; 		// Bein rechts
+meshesLimbs[2].position.y = -bodyHeight-limbHeight*0.4;
+meshesLimbs[2].rotation.z = -3.3; 
+meshesLimbs[3].position.x =  limbHeight*0.3;		// Bein links
+meshesLimbs[3].position.y = -bodyHeight-limbHeight*0.4;
+meshesLimbs[3].rotation.z =  3.3;
+//Skelette anbinden, Helfer
+skeletonBody = new THREE.Skeleton( bonesBody );		// Skelett aus den Knochen bilden
+meshBody.add( bonesBody[ 0 ] );						// dem Netz den Basisknochen zufuegen
+meshBody.bind( skeletonBody );						// Netz und Skelett "zusammenbinden"
+scene.add( meshBody );
+skeletonHelperBody = new THREE.SkeletonHelper( meshBody );  // Skelett sichtbar machen
+scene.add( skeletonHelperBody );
+skeletonsLimbs = [];
+skeletonHelperLimbs = [];
+for (var i=0; i<4;i++){
+	skeletonsLimbs[i] = new THREE.Skeleton( bonesLimbs[i] );	            
+	meshesLimbs[i].add( bonesLimbs[i][0] );								
+	meshesLimbs[i].bind( skeletonsLimbs[i] );								
+	meshBody.add( meshesLimbs[i] );
+	skeletonHelperLimbs[i] = new THREE.SkeletonHelper( meshesLimbs[i] );  
+	scene.add( skeletonHelperLimbs[i] );
+}
+//...............
+animate();
+//...............
+function skinIndexWeightCylinder(geometry){
+	for ( var i = 0; i < geometry.vertices.length; i ++ ) {         // zu allen Knoten:
+		vertexY =  geometry.vertices[ i ].y  +  limbHalfHeight;		// nur von y abhaengig!
+		skinIndex = Math.floor( vertexY  / boneLimbHeight );            	// skin-Index bestimmen  (Knochen Nr. 0 unten)   
+		skinWeight = ( vertexY  % boneLimbHeight) /  boneLimbHeight;        // Gewichtung dazu
+		geometry.skinIndices.push( new THREE.Vector4(    skinIndex, skinIndex+1, 0, 0 ) ); //  Zuordnung (zwei von max. vier Knochen)
+		geometry.skinWeights.push( new THREE.Vector4( 1-skinWeight, skinWeight , 0, 0 ) );
+	}
+}
+function createBones(positionY, height, boneCount){
+    bones = [];                   // Basis der Koordinaten der Skelette: Knochen 0
+	basicBone = new THREE.Bone(); // Basis-Knochen, Laenge 0, im Helfer nicht sichtbar
+	bones.push( basicBone );          // Anfangsknochen [0] ablegen
+	basicBone.position.y = positionY; // Anfangsknochen  Position y
+	prevBone = basicBone; 	    	  //  vorheriger Knochen fuer weitere
+	for ( var i = 1; i < boneCount+1 ; i ++ ) { // alle weiteren Knochen: 
+		bone = prevBone.clone();             	//   clonen
+		bone.position.y = height;  				// im richtigen Abstand ...
+		bones.push( bone );						//   ablegen
+		prevBone.add( bone ); 					//  ... jeweils an den vorherigen Knochen anhaengen
+		prevBone = bone;						// neuer vorheriger Knochen       
+	}
+	return bones;
+}
+function animate() {
+	requestAnimationFrame( animate );
+	var time =  clock.getElapsedTime();  //Date.now() * 0.001;			
+	if ( document.getElementById("bewegen").checked) {           				// bewegen:	
+		for ( var i = 1; i < meshBody.skeleton.bones.length - 2; i ++ ) {		// Knochen 
+			meshBody.skeleton.bones[ i ].rotation.z = 0.15*Math.sin( 1.8*time ) / meshBody.skeleton.bones.length;			
+		}		
+		for ( var i = 1; i < boneLimbCount+1; i++ ) {
+			meshesLimbs[0].skeleton.bones[ i ].rotation.x = 0.6*Math.cos( 1.2*time ) / boneLimbCount;	
+			meshesLimbs[0].skeleton.bones[ i ].rotation.z = 0.6*Math.sin( 1.2*time ) / boneLimbCount;	
+			meshesLimbs[1].skeleton.bones[ i ].rotation.x = 0.6*Math.cos( 1.2*time ) / boneLimbCount;	
+			meshesLimbs[1].skeleton.bones[ i ].rotation.z = 0.6*Math.sin( 3.14+1.2*time ) / boneLimbCount;
+			meshesLimbs[2].skeleton.bones[ i ].rotation.x = -0.1 - 0.8*(1+Math.sin( 1.2*time )) / boneLimbCount;	
+			meshesLimbs[3].skeleton.bones[ i ].rotation.x = -0.1 - 0.8*(1+Math.sin( 1.2*time )) / boneLimbCount;					
+		}
+		meshNeck.rotation.x = -0.20*(0.8+Math.sin( -1.57+1.2*time )); 			// weitere Bewegungen
+		meshNeck.rotation.y = -0.15*(0.6+Math.sin( -1.57+1.9*time ));
+		meshWings.rotation.x = 1.3 -0.05*(0.8+Math.sin( -1.57+1.2*time ));
+		meshWings.position.y =   -23 - 1.5*(0.8+Math.sin( -1.57+1.2*time ));
+		meshBody.rotation.x = 0.2;	
+		skeletonHelperBody.update();
+		for ( var j = 0; j < 4; j++ ){ 
+			skeletonHelperLimbs[j].update(); 
+		}	
+	} 
+	renderer.render( scene, camera );
+}
+</script>
+</html>

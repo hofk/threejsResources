@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<!-- ........ QUATERNION - AXIX/ANGLE ........
+/**
+ * @author hofk / http://threejs.hofk.de/
+*/
+-->
+<html lang="de">
+<head>
+	
+	<meta charset="utf-8" />
+	<title> quaternion </title>
+	
+		<!-- designed for Firefox -->
+	<style>
+		input[type="number"] {width: 180px}
+		input[type="range"] {width: 160px; }
+	</style>
+	
+	<script src="three.min.88.js"></script>
+	<script src="OrbitControls.js"></script>
+	
+</head>
+
+<body> 
+	
+	<div >  QUATERNION - AXIX/ANGLE <br />
+	>>> <input type="radio" name="choose" id="quaternion" checked="checked">
+	change quaternion:	4D vector (input also not normalized)
+		<input type="button" id="reset"  value="reset" onclick="resetQuaternion()">
+		 * if vector(0,0,0,w) - change first 0 <br />
+		<input type="radio" name="inputQ" id="rangeQ" checked="checked"> 
+	vector (
+	xq	<input type="range" id="xqr" min="-1" max="1" value="0" step="0.001"> ,
+	yq	<input type="range" id="yqr" min="-1" max="1" value="0" step="0.001"> ,
+	zq	<input type="range" id="zqr" min="-1" max="1" value="0" step="0.001"> ,
+	wq	<input type="range" id="wqr" min="-1" max="1" value="1" step="0.001">  )<br />
+	<input type="radio" name="inputQ" id="numberQ">
+	vector (
+	xq	<input type="number" id="xqn" min="-1" max="1" value="0" step="0.001"> ,
+	yq	<input type="number" id="yqn" min="-1" max="1" value="0" step="0.001"> ,
+	zq	<input type="number" id="zqn" min="-1" max="1" value="0" step="0.001"> , 
+	wq	<input type="number" id="wqn" min="-1" max="1" value="1" step="0.001"> ) <br />
+	
+	</div>
+	
+	<div id="outputQ">   </div> 
+	
+	<div id="webG">   </div> 
+	
+	<div id="outputA">   </div> 
+	
+	<div >
+	<input type="radio" name="inputA" id="numberA">
+	axis (
+	xa	<input type="number" id="xan" min="-1" max="1" value="0" step="0.001"> ,
+	ya	<input type="number" id="yan" min="-1" max="1" value="1" step="0.001"> ,
+	za	<input type="number" id="zan" min="-1" max="1" value="0" step="0.001">  ) ... angle
+		<input type="number" id="wan" min="-1" max="1" value="0" step="0.001"> * PI = 
+		<span id="rad" >  </span> rad  = <span id="deg" >  </span> deg  <br />
+	
+	<input type="radio" name="inputA" id="rangeA" checked="checked"> 
+	axis (
+	xa	<input type="range" id="xar" min="-1" max="1" value="0" step="0.001"> ,
+	ya	<input type="range" id="yar" min="-1" max="1" value="1" step="0.001"> ,
+	za	<input type="range" id="zar" min="-1" max="1" value="0" step="0.001">  ) ... angle
+		<input type="range" id="war" min="-1" max="1" value="0" step="0.001"> 
+	<br />
+	>>> <input type="radio" name="choose" id="axisangle" > change axis 3D vector (input also not normalized) and angle
+	<input type="button" id="reset"  value="reset" onclick="resetAxisangle()">
+	</div>
+	
+</body>
+
+<script> 
+
+'use strict' 
+
+document.body.style.backgroundColor = '#cccccc';
+var scene  = new THREE.Scene();
+var width  = 0.75 * window.innerWidth;
+var height = 0.75 * window.innerHeight;
+var camera = new THREE.PerspectiveCamera( 75, width / height , 0.1, 2000 );
+camera.position.set( 2, 2, 6 );
+var renderer = new THREE.WebGLRenderer( { antialias: true } );
+renderer.setSize( width, height );
+renderer.setClearColor( 0x000000, 1 );
+var container = document.getElementById( 'webG' );
+//document.body.appendChild( container );
+container.appendChild( renderer.domElement );
+var controls = new THREE.OrbitControls( camera, renderer.domElement );
+controls.enableZoom = true;
+
+var light1 = new THREE.PointLight( 0xffffff, 1, 0 );
+light1.position.set( -1, 5, -7 );
+scene.add( light1 ); 
+var light2 = new THREE.PointLight( 0xffffff, 1, 0 );
+light2.position.set( 1, -1, 4 );
+scene.add( light2 ); 
+
+//var clock  = new THREE.Clock( true );
+//var time;
+
+var sphereBodyGeometry, sphereHeadGeometry, sphereNoseGeometry, sphereEyeGeometry;
+var sphereBody, sphereHead, sphereNose, sphereEyeP, sphereEyeN;
+
+var cylinderLimbGeometry;
+var cylinderArmP, cylinderArmN;
+
+var xv, yv, zv, wv;
+
+var amount3, amount4, s;
+
+var side =  THREE.DoubleSide;
+
+var materials = [
+																						// material index:
+	new THREE.MeshBasicMaterial( { transparent: true, opacity: 0.1,	side: side } ),	//  0 transparent	
+	new THREE.MeshPhongMaterial( { color: 0xff0000, emissive: 0xff0000, transparent: true, opacity: 0.8, side: side } ),	//  1 red
+	new THREE.MeshPhongMaterial( { color: 0x00ff00, emissive: 0x00ff00, transparent: true, opacity: 0.8, side: side } ),	//  2 green
+	new THREE.MeshPhongMaterial( { color: 0x0000ff, emissive: 0x0000ff, transparent: true, opacity: 0.8, side: side } ),	//  3 blue
+	new THREE.MeshPhongMaterial( { color: 0xffff00, emissive: 0xffff00, transparent: true, opacity: 0.8, side: side } ),	//  4 yellow
+	new THREE.MeshPhongMaterial( { color: 0xff00ff, emissive: 0xff00ff, transparent: true, opacity: 0.8, side: side } ),	//  5 mgenta
+	new THREE.MeshPhongMaterial( { color: 0x00ffff, emissive: 0x00ffff, transparent: true, opacity: 0.8, side: side } ),	//  6 cyan	
+
+];
+
+var segments = 16;
+
+sphereBodyGeometry = new THREE.SphereGeometry( 0.8, segments, segments );
+
+for ( var k = 0; k <  segments * segments - segments; k ++ ) {
+	
+	sphereBodyGeometry.faces[ 2 * k ].materialIndex = k % 6 + 1;
+	sphereBodyGeometry.faces[ 2 * k + 1 ].materialIndex = k % 6 + 1;
+	
+}
+
+sphereBody = new THREE.Mesh( sphereBodyGeometry, materials );
+scene.add( sphereBody );
+
+sphereHeadGeometry = sphereBodyGeometry.clone();
+sphereHeadGeometry.scale( 0.5, 0.5, 0.5 );
+sphereHead = new THREE.Mesh( sphereHeadGeometry, materials );
+sphereHead.position.y = 1.2;
+sphereBody.add( sphereHead );
+
+sphereNoseGeometry = sphereBodyGeometry.clone();
+sphereNoseGeometry.scale( 0.15, 0.15, 0.15 );
+sphereNose = new THREE.Mesh( sphereNoseGeometry, materials[ 3 ] );
+sphereNose.position.z = 0.45;
+sphereHead.add( sphereNose );
+
+sphereEyeGeometry = sphereBodyGeometry.clone();
+sphereEyeGeometry.scale( 0.1, 0.1, 0.1 );
+sphereEyeP = new THREE.Mesh( sphereEyeGeometry, materials[ 4 ] );
+sphereEyeP.position.set ( 0.15, 0.15, 0.3);
+sphereHead.add( sphereEyeP );
+sphereEyeN = new THREE.Mesh( sphereEyeGeometry, materials[ 4 ] );
+sphereEyeN.position.set ( -0.15, 0.15, 0.3);
+sphereHead.add( sphereEyeN );
+
+cylinderLimbGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.7, segments, 1, false);
+
+cylinderArmP = new THREE.Mesh( cylinderLimbGeometry , materials[ 1 ] );
+cylinderArmP.rotation.z = 1.57;
+cylinderArmP.position.x = 0.65;
+cylinderArmP.position.y = 0.65;
+sphereBody.add( cylinderArmP );
+
+cylinderArmN = new THREE.Mesh( cylinderLimbGeometry , materials[ 5 ] );
+cylinderArmN.rotation.z = 1.57;
+cylinderArmN.position.x = -0.65;
+cylinderArmN.position.y = 0.65;
+sphereBody.add( cylinderArmN );
+
+var gridHelper = new THREE.GridHelper( 10, 10 );
+scene.add( gridHelper );
+
+var axesHelper = new THREE.AxesHelper( 100 );
+scene.add( axesHelper );
+
+arrow( "x" );
+arrow( "y" );
+arrow( "z" );
+
+var quaternion = document.getElementById( "quaternion" );
+var rangeQ = document.getElementById( "rangeQ" );
+var numberQ = document.getElementById( "numberQ" );
+
+var axisangle = document.getElementById( "axisangle" );
+var rangeA = document.getElementById( "rangeA" );
+var numberA = document.getElementById( "numberA" );
+
+var xqr = document.getElementById( "xqr" );
+var yqr = document.getElementById( "yqr" );
+var zqr = document.getElementById( "zqr" );
+var wqr = document.getElementById( "wqr" );
+
+var xqn = document.getElementById( "xqn" );
+var yqn = document.getElementById( "yqn" );
+var zqn = document.getElementById( "zqn" );
+var wqn = document.getElementById( "wqn" );
+
+var xar = document.getElementById( "xar" );
+var yar = document.getElementById( "yar" );
+var zar = document.getElementById( "zar" );
+var war = document.getElementById( "war" );
+
+var xan = document.getElementById( "xan" );
+var yan = document.getElementById( "yan" );
+var zan = document.getElementById( "zan" );
+var wan = document.getElementById( "wan" );
+
+var rad = document.getElementById( "rad" );
+var deg = document.getElementById( "deg" );
+
+var lineGeometry = new THREE.Geometry();
+lineGeometry.vertices.push(	new THREE.Vector3( 0,0,0), new THREE.Vector3( 0,0,0) );
+var direction= new THREE.Line( lineGeometry, materials[ 4 ] );
+scene.add( direction );
+
+sphereBody.applyQuaternion( new THREE.Quaternion( 0, 0, 0, 1 ) );
+
+animate();
+
+// ..........................................................
+
+function arrow( axes ) {
+	
+	var dir;
+	var origin = new THREE.Vector3( 0, 0, 0 );
+	var len = 3.5;
+	var col = axes === "x" ? 0xff0000 : ( axes === "y" ? 0x00ff00 : 0x0000ff );
+	if ( axes === "x" ) dir = new THREE.Vector3( 1, 0, 0 );
+	if ( axes === "y" ) dir = new THREE.Vector3( 0, 1, 0 ); 
+	if ( axes === "z" ) dir = new THREE.Vector3( 0, 0, 1 );
+	var arrowHelper = new THREE.ArrowHelper( dir, origin, len, col);
+	sphereBody.add( arrowHelper );
+	
+}
+
+function resetQuaternion( ) {
+	
+	if ( quaternion.checked ) {
+		
+		xqr.value = xqn.value = 0;
+		yqr.value = yqn.value = 0;
+		zqr.value = zqn.value = 0;
+		wqr.value = wqn.value = 1;
+		
+	}
+	
+}
+
+function resetAxisangle( ) {
+	
+	if ( axisangle.checked ) {
+		
+		xar.value = xan.value = 0;
+		yar.value = yan.value = 1;
+		zar.value = zan.value = 0;
+		war.value = wan.value = 0;
+		
+	}
+	
+}
+
+function setAxis( ) {
+	
+	lineGeometry.vertices[ 0 ].set( -xv * 3, -yv * 3, -zv * 3 );
+	lineGeometry.vertices[ 1 ].set( xv * 3, yv * 3, zv * 3 );
+	
+}
+
+function normalize3D( ) {
+	
+	amount3 = Math.sqrt( xv * xv + yv * yv + zv * zv );
+	
+	xv = xv / amount3;
+	yv = yv / amount3;
+	zv = zv / amount3;
+	
+}
+
+function normalize4D( ) {
+
+	amount4 = Math.sqrt( xv * xv + yv * yv + zv * zv + wv * wv );
+	
+	xv = xv / amount4;
+	yv = yv / amount4;
+	zv = zv / amount4;
+	wv = wv / amount4;
+		
+}
+
+function outputQuaternion( ) {
+	
+	xqr.value = xqn.value = Math.floor( xv * 1000 ) / 1000;
+	yqr.value = yqn.value = Math.floor( yv * 1000 ) / 1000;
+	zqr.value = zqn.value = Math.floor( zv * 1000 ) / 1000;
+	wqr.value = wqn.value = Math.floor( wv * 1000 ) / 1000;
+	
+}
+
+function outputAxisAngle( ) {
+	
+	xar.value = xan.value = Math.floor( xv * 1000 ) / 1000; 
+	yar.value = yan.value = Math.floor( yv * 1000 ) / 1000; 
+	zar.value = zan.value = Math.floor( zv * 1000 ) / 1000;
+	war.value = wan.value = Math.floor( wv * 1000 ) / 1000;
+	
+	rad.innerHTML =  Math.floor( wv * Math.PI * 1000 ) / 1000;
+	deg.innerHTML =  Math.floor( wv * 180 * 1000 ) / 1000;
+	
+}
+
+function animate( ) {
+
+	requestAnimationFrame( animate ); 
+	// time = clock.getElapsedTime( );
+	
+	lineGeometry.verticesNeedUpdate  = true;
+	
+	if ( quaternion.checked ) {
+		
+		if ( rangeQ.checked ) {
+			
+			xv = xqr.value;
+			yv = yqr.value;
+			zv = zqr.value;
+			wv = wqr.value;
+			
+			normalize4D( );
+			
+			xqn.value = Math.floor( xv * 1000 ) / 1000;
+			yqn.value = Math.floor( yv * 1000 ) / 1000;
+			zqn.value = Math.floor( zv * 1000 ) / 1000;
+			wqn.value = Math.floor( wv * 1000 ) / 1000;
+			
+		}
+		
+		if ( numberQ.checked ) {
+			
+			xv = xqn.value;
+			yv = yqn.value;
+			zv = zqn.value;
+			wv = wqn.value;
+			
+			normalize4D( );
+			
+			xqr.value = Math.floor( xv * 1000 ) / 1000; 
+			yqr.value = Math.floor( yv * 1000 ) / 1000; 
+			zqr.value = Math.floor( zv * 1000 ) / 1000; 
+			wqr.value = Math.floor( wv * 1000 ) / 1000;
+			
+		}
+		
+		sphereBody.quaternion.set( xv, yv, zv, wv );
+		
+		s =  Math.sqrt( 1 - wv * wv );
+		
+		if ( s > 0.0001 ) { // prevent divison by zero
+			
+			xv = xv / s;
+			yv = yv / s;
+			zv = zv / s;
+			
+		}
+		
+		if ( wv > 0 ) {
+			
+			wv =  2 * Math.acos( wv ) / Math.PI;
+			
+		} else {
+			
+			wv = - 2 * ( 1 -  Math.acos( wv ) / Math.PI );
+			
+		}
+		
+		setAxis();
+		
+		outputAxisAngle( );
+		
+	}
+	
+	if ( axisangle.checked ) {
+		
+		if ( rangeA.checked ) {
+			
+			xv = xar.value;
+			yv = yar.value;
+			zv = zar.value;
+			wv = war.value;
+			
+			normalize3D( );
+			
+			xan.value = Math.floor( xv * 1000 ) / 1000;
+			yan.value = Math.floor( yv * 1000 ) / 1000;
+			zan.value = Math.floor( zv * 1000 ) / 1000;
+			wan.value = Math.floor( wv * 1000 ) / 1000;
+			
+			rad.innerHTML =  Math.floor( wv * Math.PI * 1000 ) / 1000;
+			deg.innerHTML =  Math.floor( wv * 180 * 1000 ) / 1000;
+			
+		}
+		
+		if ( numberA.checked ) {
+			
+			xv = xan.value;
+			yv = yan.value;
+			zv = zan.value;
+			wv = wan.value;
+			
+			normalize3D( );
+			
+			xar.value = Math.floor( xv * 1000 ) / 1000;
+			yar.value = Math.floor( yv * 1000 ) / 1000;
+			zar.value = Math.floor( zv * 1000 ) / 1000;
+			war.value = Math.floor( wv * 1000 ) / 1000;
+			
+			rad.innerHTML =  Math.floor( wv * Math.PI * 1000 ) / 1000;
+			deg.innerHTML =  Math.floor( wv * 180 * 1000 ) / 1000;
+			
+		}
+		
+		wv = Math.PI * wv;
+		
+		s = Math.sin( wv / 2 );
+		
+		setAxis();
+		
+		xv = s * xv / amount3;
+		yv = s * yv / amount3;
+		zv = s * zv / amount3;
+		wv = Math.cos( wv / 2 );
+		
+		amount4 = Math.sqrt( xv * xv + yv * yv + zv * zv + wv * wv );
+		
+		xv = xv / amount4;
+		yv = yv / amount4;
+		zv = zv / amount4;
+		wv = wv / amount4;
+		
+		outputQuaternion( );
+		
+		sphereBody.quaternion.set( xv, yv, zv, wv );
+		
+	}
+	
+	renderer.render( scene, camera );
+	controls.update();
+	
+}
+
+</script>  
+</html>

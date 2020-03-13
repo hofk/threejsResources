@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<!--   *** modify indexed BufferGeometries ***
+/**
+ * @author hofk / http://threejs.hofk.de/
+*/
+-->
+<html lang="de" >
+<head>
+<meta charset="utf-8" />   
+<title> modify Geo </title>
+
+<style>
+	
+	#inp {
+	
+		overflow: hidden;
+		position: absolute;
+		top: 10px;
+		left: 10px;	
+		width: 380px;
+		height: 540px;
+		z-index: 99;
+		opacity: 0.95;
+		background: #dddddd;		
+		border: 2px solid #000033;
+		border-radius: 4px; 		
+		padding: 0px;
+		text-align: left;
+		
+    }
+	
+	/*designed for Firefox */
+	input[type="text"] { width: 40px }
+	input[type="range"] { width: 200px }
+	input[type="number"] { width: 65px }
+		
+</style>
+
+</head>
+
+<body>
+<textarea id="code" cols="1" rows="1" style="position: absolute; top: 0px; left: -10px; width: 1px; height: 1px"> </textarea>
+<div id="output" style="position: absolute; top: 580px; left: 5px;  text-align: left;">
+ --- Modify ---<br />
+ <br />
+ Choose mouse, <br />
+ (fix coordinate: key x,y,z) <br /> 
+ pick vertex, edge, face,<br />
+ or use input.<br />
+ <br /> 
+ Export the changed code.<br />
+ The code is displayed here<br />
+ and is also copied to the clipboard.<br />
+ (quadline can't modified)
+</div>
+
+<span id="inp" disabled="true">
+	<input id="InpChoosed" type="checkbox" > 
+	<button id="changeInput"> ← input </button>	
+	<button id="btnFaceIndex"> ......... faceIndex ......... </button>
+	<input id="faceIndex" type="number"  min="0" step="1" disabled="true">
+	<hr />
+	<button id="btnVertexA">vertex a</button> <button id="btnIndexA"> 0 </button> <br />
+	<input id="useRangeAx"	type="radio"	name="chooseAx" checked="checked">
+	<input id="rangeAx"		type="range"	min="-2" max="2" value="0" step="0.001" disabled="true">	
+	<input id="numberAx"	type="number"	min="-2" max="2" value="0" step="0.001" disabled="true">
+	<input id="useNumberAx"	type="radio"	name="chooseAx">
+	<br />
+	<input id="useRangeAy"	type="radio"	name="chooseAy" checked="checked">
+	<input id="rangeAy"		type="range"	min="-2" max="2" value="0" step="0.001" disabled="true">  	
+	<input id="numberAy"	type="number"	min="-2" max="2" value="0" step="0.001" disabled="true">
+	<input id="useNumberAy"	type="radio"	name="chooseAy" >
+	<br />
+	<input id="useRangeAz"	type="radio"	name="chooseAz" checked="checked">
+	<input id="rangeAz"		type="range"	min="-2" max="2" value="0" step="0.001" disabled="true">  	
+	<input id="numberAz"	type="number"	min="-2" max="2" value="0" step="0.001" disabled="true">
+	<input id="useNumberAz"	type="radio"	name="chooseAz">
+	<br />
+	<button id="btnVertexB">vertex b</button> <button id="btnIndexB"> 0 </button> <br />
+	<input id="useRangeBx"	type="radio"	name="chooseBx" checked="checked">
+	<input id="rangeBx"		type="range"	min="-2" max="2" value="0" step="0.001" disabled="true">  	
+	<input id="numberBx"	type="number"	min="-2" max="2" value="0" step="0.001" disabled="true">
+	<input id="useNumberBx"	type="radio"	name="chooseBx">
+	<br />
+	<input id="useRangeBy"	type="radio"	name="chooseBy" checked="checked">
+	<input id="rangeBy"		type="range"	min="-2" max="2" value="0" step="0.001" disabled="true">  	
+	<input id="numberBy"	type="number"	min="-2" max="2" value="0" step="0.001" disabled="true">
+	<input id="useNumberBy"	type="radio"	name="chooseBy">
+	<br />
+	<input id="useRangeBz"	type="radio"	name="chooseBz" checked="checked">
+	<input id="rangeBz"		type="range"	min="-2" max="2" value="0" step="0.001" disabled="true">  	
+	<input id="numberBz"	type="number"	min="-2" max="2" value="0" step="0.001" disabled="true">
+	<input id="useNumberBz"	type="radio"	name="chooseBz"> <br />
+	
+	<button id="btnVertexC">vertex c</button> <button id="btnIndexC"> 0 </button><br />
+	<input id="useRangeCx"	type="radio"	name="chooseCx" checked="checked">
+	<input id="rangeCx"		type="range"	min="-2" max="2" value="0" step="0.001" disabled="true">  	
+	<input id="numberCx"	type="number"	min="-2" max="2" value="0" step="0.001" disabled="true">
+	<input id="useNumberCx"	type="radio"	name="chooseCx"> 
+	<br />
+	<input id="useRangeCy"	type="radio"	name="chooseCy" checked="checked">
+	<input id="rangeCy"		type="range"	min="-2" max="2" value="0" step="0.001" disabled="true">  	
+	<input id="numberCy"	type="number"	min="-2" max="2" value="0" step="0.001" disabled="true">
+	<input id="useNumberCy"	type="radio"	name="chooseCy">
+	<br />
+	<input id="useRangeCz"	type="radio"	name="chooseCz" checked="checked">
+	<input id="rangeCz"		type="range"	min="-2" max="2" value="0" step="0.001" disabled="true">  	
+	<input id="numberCz"	type="number"	min="-2" max="2" value="0" step="0.001" disabled="true">
+	<input id="useNumberCz"	type="radio"	name="chooseCz"> <br />
+	<hr />
+	<button id="grids" > hide grids </button>
+	<button id="wirefr">wireframe</button> 
+	<button id="quad">quadline</button> <br />
+	<button id="plus"> + </button> 
+	<button id="handle"> handle size </button>
+	<button id="minus"> - </button>
+	<button id="dec">decimals =</button>
+	<input type="number" id="nDec" min="1" max="21" value="3" step="1" >
+	
+	<hr />
+	<button id="export">export changed code</button>
+	<button id="clr" > clear displayed code </button>
+	
+</span>
+	
+</body>
+<!-- three.90.mugen.js with workaround from mugen87 (raycast for multi material)
+	https://github.com/Mugen87/three.js/blob/82e866be2ffa752969af6efe96f91b5baab19c33/src/objects/Mesh.js
+	replaced:
+	function Mesh( geometry, material ) { ... } 
+	Mesh.prototype = Object.assign( ... )
+	
+	Note: from revision 94 multi-material raycast is supported in the core of three.js
+-->
+
+<script src="three.min.94.js"></script>
+
+<script src="OrbitControls.js"></script>
+<script src="THREEx.WindowResize.js"></script>
+
+<script src="THREEh.js"></script> <!--  vertexFaceNumbersHelper( mesh, mode, size, color ) -->
+
+<script src="geo.js"></script> <!-- defines a indexed BufferGeometry geo -->
+
+<script>
+
+'use strict'
+
+var out;
+
+var mouse = new THREE.Vector2();
+var keyCode = null;
+var sqrt2_2 = Math.sqrt( 2 ) / 2; 
+var raycaster = new THREE.Raycaster();
+
+var intersects 	= [];
+var selection;
+var handlePos = new THREE.Vector3( 0,0,0 );
+var hdlSize = 1;
+
+var a, ax, ay, az, aPos;
+var b, bx, by, bz, bPos; 
+var c, cx, cy, cz, cPos;
+
+var vertexPickedA = false;
+var vertexPickedB = false;
+var vertexPickedC = false;
+var edgePickedAB = false;
+var edgePickedBC = false;
+var edgePickedCA = false;
+var facePicked = false;
+
+var abV = new THREE.Vector3( 0,0,0 );
+var bcV = new THREE.Vector3( 0,0,0 );
+var caV = new THREE.Vector3( 0,0,0 );
+
+var abVn;
+var bcVn;
+var caVn;
+
+var edgeV;
+
+var paD;
+var pbD;
+var pcD;
+
+var abD;
+var bcD;
+var caD;
+
+var abpD;
+var bcpD;
+var capD;
+
+var paV = new THREE.Vector3( 0,0,0 );
+var pbV = new THREE.Vector3( 0,0,0 );
+var pcV = new THREE.Vector3( 0,0,0 );
+
+var paVn = new THREE.Vector3( 0,0,0 );
+var pbVn = new THREE.Vector3( 0,0,0 );
+var pcVn = new THREE.Vector3( 0,0,0 );
+
+var quad = false;
+
+var scene = new THREE.Scene();
+
+var camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight , 0.01, 2000);
+scene.add(camera);
+camera.position.set( 0, 1, 3);
+camera.lookAt(new THREE.Vector3( 0, 0, 0 ) );
+
+var renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(0xdddddd, 1);
+
+var container = document.createElement('div');
+document.body.appendChild(container);
+container.appendChild(renderer.domElement);
+
+THREEx.WindowResize(renderer, camera);
+
+var light1 = new THREE.PointLight();
+light1.position.set( 1.5, 4, 7 );
+scene.add( light1 );
+
+var light2 = new THREE.PointLight();
+light2.position.set( -1, -8, -8 );
+scene.add( light2 );
+
+scene.add(new THREE.AmbientLight(0x444444));
+var dirLight = new THREE.DirectionalLight(0xefefef);
+dirLight.position.set(2, 6, 3).normalize();
+camera.add(dirLight);
+camera.add(dirLight.target);
+
+var btnChangeInput = document.getElementById( "changeInput" );
+btnChangeInput.onclick = changeInput;
+var btnClr = document.getElementById( "clr" );
+btnClr.onclick = clearCode;
+var btnGrids = document.getElementById( "grids" );
+btnGrids.onclick = showGrids;
+var btnWireframe = document.getElementById( "wirefr" );
+btnWireframe.onclick = showWireframe;
+var btnQuad = document.getElementById( "quad" );
+btnQuad.onclick = showQuadline;
+var btnPlus = document.getElementById( "plus" );
+btnPlus.onclick = handleSizePlus;
+var btnMinus = document.getElementById( "minus" );
+btnMinus.onclick = handleSizeMinus;
+
+nDec.onchange = changeDecimals;
+
+document.getElementById("export").onclick  = outputJavaScript;
+
+document.addEventListener('keydown', onDocumentKeyDown );
+document.addEventListener('keyup', onDocumentKeyUp );
+
+container.addEventListener('mousedown', onContainerMouseDown );
+container.addEventListener('mousemove', onContainerMouseMove );
+container.addEventListener('mouseup', onContainerMouseUp );
+
+var controls = new THREE.OrbitControls( camera, renderer.domElement );
+controls.enableZoom = true;
+
+var axesHelper = new THREE.AxesHelper( 4 );
+scene.add( axesHelper );
+
+var gridHelperXY = new THREE.GridHelper( 2, 20, 0x333333, 0x888888 );
+scene.add( gridHelperXY );
+gridHelperXY.rotation.x = -Math.PI / 2;
+gridHelperXY.position.set( 0, 0, -1 );
+
+var gridHelperXZ = new THREE.GridHelper( 2, 20 );
+scene.add( gridHelperXZ );
+gridHelperXZ.position.set( 0, -1, 0 );
+
+var gridHelperYZ = new THREE.GridHelper( 2, 20 );
+scene.add( gridHelperYZ );
+gridHelperYZ.rotation.z = -Math.PI / 2;
+gridHelperYZ.position.set( -1, 0, 0 );
+
+var grids = true;
+
+// Auxiliary layer for determining the mouse position and moving in 3D
+var auxiliaryPlaneGeo = new THREE.PlaneBufferGeometry( 3, 3, 3, 3 );
+var auxiliaryPlaneMaterial = new THREE.MeshBasicMaterial({color: 0x888888, transparent: true, opacity:0.2, side: THREE.DoubleSide, wireframe: false} );
+var auxiliaryPlane = new THREE.Mesh( auxiliaryPlaneGeo, auxiliaryPlaneMaterial );
+auxiliaryPlane.visible = true;
+scene.add( auxiliaryPlane );
+
+arrowAuxiliaryAxis( "x" );
+arrowAuxiliaryAxis( "y" );
+arrowAuxiliaryAxis( "z" );
+
+// material
+var uvTex			= new THREE.TextureLoader().load( "uvgrid01.png" );
+var waterlilyTex	= new THREE.TextureLoader().load( "waterlily.png" );
+var specular = 0x333333;
+var side = THREE.DoubleSide;
+var wireframe = false;
+var flatShading = true;
+
+	var materials = [
+		
+		new THREE.MeshBasicMaterial( {
+			opacity: 0.15,	transparent: true, 	
+			side: side, wireframe: wireframe } ),					//  0 transparent
+			
+		new THREE.MeshPhongMaterial( {
+			color: 0x440033, emissive: 0x330033, specular: specular,
+			side: side, wireframe: wireframe, flatShading: flatShading } ),	//  1 color
+			
+		new THREE.MeshPhongMaterial( {
+			color: 0xff0000, emissive: 0xff0000, specular: specular, 
+			side: side, wireframe: wireframe, flatShading: flatShading } ),	//  2 red
+			
+		new THREE.MeshPhongMaterial( {
+			color: 0x00ff00, emissive: 0x00ff00, specular: specular, 
+			side: side, wireframe: wireframe, flatShading: flatShading } ),	//  3 green
+			
+		new THREE.MeshPhongMaterial( {
+			color: 0x0000ff, emissive: 0x0000ff, specular: specular, 
+			side: side, wireframe: wireframe, flatShading: flatShading } ),	//  4 blue
+			
+		new THREE.MeshPhongMaterial( {
+			color: 0xffff00, emissive: 0xffff00, specular: specular, 
+			side: side, wireframe: wireframe, flatShading: flatShading } ),	//  5 yellow
+			
+		new THREE.MeshPhongMaterial( {
+			color: 0xff00ff, emissive: 0xff00ff, specular: specular, 
+			side: side, wireframe: wireframe, flatShading: flatShading } ),	//  6 mgenta
+			
+		new THREE.MeshPhongMaterial( {
+			color: 0x00ffff, emissive: 0x00ffff, specular: specular, 
+			side: side, wireframe: wireframe, flatShading: flatShading } ),	//  7 cyan
+			
+		new THREE.MeshBasicMaterial( {
+			map: uvTex,
+			side: side, wireframe: wireframe, flatShading: flatShading } ),	//  8 uv grid
+			
+		new THREE.MeshBasicMaterial( {
+			map: waterlilyTex,
+			side: side, wireframe: wireframe, flatShading: flatShading } ),	//  9 photo
+			
+		new THREE.MeshPhongMaterial( {
+			color: 0x444444, emissive: 0x444444, specular: specular, 
+			side: side, wireframe: wireframe, flatShading: flatShading } )	// 10 grey
+			
+	];
+
+//....... skript geo.js def. geometry geo .........
+var mesh = new THREE.Mesh( geo, materials );
+
+if ( geo.quadLine !== undefined ) {
+	
+	mesh.add( geo.quadLine );
+ 	geo.quadLine.visible = false;
+ 	
+}
+
+scene.add( mesh );
+
+var handlePoint = new THREE.Object3D();
+scene.add( handlePoint );
+
+var handleBoxGeometry = new THREE.BoxBufferGeometry( 0.1, 0.1, 0.1 );
+var handleBoxMaterial = new THREE.MeshBasicMaterial( {color: 0x00cc00, transparent: true, opacity: 0.6 } );
+var handleBox = new THREE.Mesh( handleBoxGeometry , handleBoxMaterial );
+handlePoint.add( handleBox );
+
+var handleBoxEdges = new THREE.BoxHelper( handleBox, 0x000000 );
+handleBox.add( handleBoxEdges );
+
+var handleDirA = new THREE.Vector3( 0, 0, 0 );
+var handleArrowA = new THREE.ArrowHelper( handleDirA, new THREE.Vector3( 0, 0, 0 ), 0, 0xff00cc);
+handlePoint.add( handleArrowA );
+
+var handleDirB = new THREE.Vector3( 0, 0, 0 );
+var handleArrowB = new THREE.ArrowHelper( handleDirB, new THREE.Vector3( 0, 0, 0 ), 0, 0xffcc00);
+handlePoint.add( handleArrowB );
+
+var handleDirC = new THREE.Vector3( 0, 0, 0 );
+var handleArrowC = new THREE.ArrowHelper( handleDirC, new THREE.Vector3( 0, 0, 0 ), 0, 0x00ffcc );
+handlePoint.add( handleArrowC );
+
+handlePoint.visible = false;
+
+var faceIdx = 0;
+faceIndex.value = 0;
+faceIndex.max = geo.faceIndices.length / 3 - 1;
+var currentFaceIdx = 0;
+
+var statusInp = InpChoosed.checked;
+
+var vertexFaceNumbersHelper = new THREEh.vertexFaceNumbersHelper( mesh, 3, 0.02, 0x0000ff ); // from THREEh.js !!!
+vertexFaceNumbersHelper.update( 3 );
+
+String.prototype.replaceAll = function( search, replacement ) {
+	
+	var target = this;
+	return target.split( search ).join( replacement );
+	
+};
+
+animate();
+
+//...........................................................................
+
+function enableDisableInp( ) {
+	
+	if ( InpChoosed.checked ) {
+		
+		faceIndex.disabled = false;
+		
+		rangeAx.disabled = numberAx.disabled = rangeAy.disabled = numberAy.disabled = rangeAz.disabled = numberAz.disabled = false;
+		rangeBx.disabled = numberBx.disabled = rangeBy.disabled = numberBy.disabled = rangeBz.disabled = numberBz.disabled = false;
+		rangeCx.disabled = numberCx.disabled = rangeCy.disabled = numberCy.disabled = rangeCz.disabled = numberCz.disabled = false;
+
+		faceIdx = faceIndex.value;
+		
+		auxiliaryPlane.visible = false;
+		handleBox.visible = false;
+		handleArrowA.visible = false;
+		handleArrowB.visible = false;
+		handleArrowC.visible = false;
+				
+	} else {
+		
+		faceIndex.disabled = true;
+		
+		rangeAx.disabled = numberAx.disabled = rangeAy.disabled = numberAy.disabled = rangeAz.disabled = numberAz.disabled = true;
+		rangeBx.disabled = numberBx.disabled = rangeBy.disabled = numberBy.disabled = rangeBz.disabled = numberBz.disabled = true;
+		rangeCx.disabled = numberCx.disabled = rangeCy.disabled = numberCy.disabled = rangeCz.disabled = numberCz.disabled = true;
+		
+		auxiliaryPlane.visible = true;
+		handleBox.visible = true;
+		handleArrowA.visible = true;
+		handleArrowB.visible = true;
+		handleArrowC.visible = true;
+		
+	}
+	
+	statusInp = InpChoosed.checked;
+	
+}
+
+function changeDecimals( ) {
+	
+	var d =  Math.pow( 10, -nDec.value );
+	
+	rangeAx.step = rangeAy.step = rangeAz.step = d;
+	rangeBx.step = rangeBy.step = rangeBz.step = d;
+	rangeCx.step = rangeCy.step = rangeCz.step = d;
+	
+	numberAx.step = numberAy.step = numberAz.step = d;
+	numberBx.step = numberBy.step = numberBz.step = d;
+	numberCx.step = numberCy.step = numberCz.step = d;
+	
+}
+
+function handleSizePlus( ) {
+	
+	hdlSize = ( hdlSize + 0.2 ) / hdlSize;
+	handleBoxGeometry.scale( hdlSize, hdlSize, hdlSize);
+	handleBoxEdges.geometry.scale( hdlSize, hdlSize, hdlSize );
+	
+}
+
+function handleSizeMinus( ) {
+	
+	hdlSize = hdlSize / ( hdlSize + 0.2 );
+	handleBoxGeometry.scale( hdlSize, hdlSize, hdlSize);
+	handleBoxEdges.geometry.scale( hdlSize, hdlSize, hdlSize );
+	
+}
+
+function changeInput( ) {
+	
+	if ( InpChoosed.checked ) { 
+		
+		InpChoosed.checked = false;
+		
+	} else { 
+		
+		InpChoosed.checked = true;	
+	}
+	
+}
+
+function clearCode( ) {
+	
+	 output.innerHTML = "";
+	
+}
+
+function showGrids( ) {
+	
+	grids = !grids;
+	
+	if ( grids ) {
+		
+		gridHelperXY.visible = true;
+		gridHelperXZ.visible = true;
+		gridHelperYZ.visible = true;
+		btnGrids.innerHTML = "hide grids";
+		
+	} else {
+		
+		gridHelperXY.visible = false;
+		gridHelperXZ.visible = false;
+		gridHelperYZ.visible = false;
+		btnGrids.innerHTML = "show grids";
+		
+	}
+	
+}
+
+function showWireframe( ) {
+	
+	wireframe = !wireframe;
+	btnWireframe.innerHTML = wireframe ? "no wirefr." : "wireframe";
+	for ( var m = 0; m < materials.length; m ++ ) materials[ m ].wireframe = wireframe;
+	
+}
+
+function showQuadline( ) {
+	
+	quad = !quad;
+	
+	btnQuad.innerHTML = quad === true ? "no quad" : "quadline";
+	if ( geo.quadLine !== undefined ) geo.quadLine.visible = quad ? true : false;
+	
+}
+
+
+function onDocumentKeyDown( event ) {
+	
+	keyCode = event.keyCode;
+	
+}
+
+function onDocumentKeyUp( event ) {
+	
+	keyCode = null;	
+	
+}
+
+function onContainerMouseDown( event ) {
+	
+	event.preventDefault(); 
+	
+	if ( !InpChoosed.checked ) {
+		
+		selection =  null;
+		
+		mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+		mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+		
+		raycaster.setFromCamera( mouse, camera );
+		
+		intersects = raycaster.intersectObject( mesh );
+		
+		if (intersects.length > 0) {        //  cutting object
+			
+			controls.enabled = false;
+			
+			vertexPickedA = false;
+			vertexPickedB = false;
+			vertexPickedC = false;
+			
+			edgePickedAB = false;
+			edgePickedBC = false;
+			edgePickedCA = false;
+			
+			facePicked = false;
+			
+			handleArrowA.visible = false;
+			handleArrowB.visible = false;
+			handleArrowC.visible = false;
+			
+			handlePoint.visible = true;
+			
+			// Selection - first cutting object
+			selection = intersects[0].object;
+			handlePos = intersects[0].point;
+			handlePoint.position.set( handlePos );
+			auxiliaryPlane.position.copy( handlePos );
+			
+			if ( keyCode === 88 ) {
+				
+				auxiliaryPlane.quaternion.set( 0, -sqrt2_2, 0, sqrt2_2); // auxiliary plane orthogonal to x axis
+				
+			} else  if ( keyCode === 89 ) { 
+				
+				auxiliaryPlane.quaternion.set( sqrt2_2, 0, 0, sqrt2_2 ); // auxiliary plane orthogonal to y axis
+				
+			} else  if ( keyCode === 90 ) {
+				
+				auxiliaryPlane.quaternion.set( 0, 0, 0, 1 ); // auxiliary plane orthogonal to z axis
+				
+			} else {
+				
+				auxiliaryPlane.quaternion.copy( camera.quaternion );
+				
+			}
+			
+			faceIdx = intersects[0].faceIndex;
+			currentFaceIdx = faceIdx;
+			
+			faceIndex.value = faceIdx;
+			
+			a = intersects[0].face.a;
+			b = intersects[0].face.b;
+			c = intersects[0].face.c;
+			
+			ax = geo.vertices[ a * 3 ];
+			ay = geo.vertices[ a * 3 + 1 ];
+			az = geo.vertices[ a * 3 + 2 ];
+			
+			bx = geo.vertices[ b * 3 ];
+			by = geo.vertices[ b * 3 + 1 ];
+			bz = geo.vertices[ b * 3 + 2 ];
+			
+			cx = geo.vertices[ c * 3 ];
+			cy = geo.vertices[ c * 3 + 1 ];
+			cz = geo.vertices[ c * 3 + 2 ];
+			
+			aPos = new THREE.Vector3( ax, ay, az );
+			bPos = new THREE.Vector3( bx, by, bz );
+			cPos = new THREE.Vector3( cx, cy, cz );
+			
+			paD = handlePos.distanceTo( aPos );
+			pbD = handlePos.distanceTo( bPos );
+			pcD = handlePos.distanceTo( cPos );
+			
+			abV.subVectors( bPos, aPos );
+			bcV.subVectors( cPos, bPos );
+			caV.subVectors( aPos, cPos );
+			
+			abD = Math.sqrt( abV.dot( abV ) ); // a, b Distance
+			bcD = Math.sqrt( bcV.dot( bcV ) ); // b, c Distance
+			caD = Math.sqrt( caV.dot( caV ) ); // c, a Distance
+			
+			abVn = abV;
+			bcVn = bcV;
+			caVn = caV;
+			
+			abVn.normalize( );
+			bcVn.normalize( );
+			caVn.normalize( );
+			
+			paV.subVectors( aPos, handlePos );
+			pbV.subVectors( bPos, handlePos );
+			pcV.subVectors( cPos, handlePos );
+			
+			paVn.copy( paV ).normalize( );
+			pbVn.copy( pbV ).normalize( );
+			pcVn.copy( pcV ).normalize( );
+			
+			abpD = Math.sqrt( paV.dot( paV ) - abVn.dot( paV ) * abVn.dot( paV ) ); // ab, p Distance
+			bcpD = Math.sqrt( pbV.dot( pbV ) - bcVn.dot( pbV ) * bcVn.dot( pbV ) ); // bc, p Distance
+			capD = Math.sqrt( pcV.dot( pcV ) - caVn.dot( pcV ) * caVn.dot( pcV ) ); // ca, p Distance
+			
+			if ( paD < ( pbD + pcD ) / 8 ) {
+				
+				handleArrowA.setDirection( paVn );
+				handleArrowA.setLength( paD, paD / 2, paD / 16 );
+				handleArrowA.visible = true;
+				vertexPickedA = true;
+				
+				
+			} else if ( pbD < ( paD + pcD ) / 8  ) {
+				
+				handleArrowB.setDirection( pbVn );
+				handleArrowB.setLength( pbD, pbD / 2, pbD / 16);
+				handleArrowB.visible = true;
+				vertexPickedB = true;
+				
+			} else if ( pcD < ( paD + pbD ) / 8 ) {
+				
+				handleArrowC.setDirection( pcVn );
+				handleArrowC.setLength( pcD, pcD / 2, pcD / 16 );
+				handleArrowC.visible = true;
+				vertexPickedC = true;
+				
+			} else {
+				
+				// check for edges
+				
+				if ( abpD< bcpD && abpD< capD && abpD < abD / 8 ) {
+					
+					handleArrowA.setDirection( paVn );
+					handleArrowB.setDirection( pbVn );
+					handleArrowA.setLength( paD, paD / 2, paD / 16 );
+					handleArrowB.setLength( pbD, pbD / 2, pbD / 16 );
+					handleArrowA.visible = true;
+					handleArrowB.visible = true;
+					edgePickedAB = true;
+									
+				} else if ( bcpD < capD && bcpD < abpD&& bcpD < bcD / 8 ) {
+						
+					handleArrowB.setDirection( pbVn );
+					handleArrowC.setDirection( pcVn );
+					handleArrowB.setLength( pbD, pbD / 2, pbD / 16 );
+					handleArrowC.setLength( pcD, pcD / 2, pcD / 16 );
+					handleArrowB.visible = true;
+					handleArrowC.visible = true;
+					edgePickedBC = true;
+					
+				} else if ( capD < abpD && capD < bcpD && capD < caD / 8 ) {
+					
+					handleArrowC.setDirection( pcVn );
+					handleArrowA.setDirection( paVn );
+					handleArrowC.setLength( pcD, pcD / 2, pcD / 16 );
+					handleArrowA.setLength( paD, paD / 2, paD / 16 );
+					handleArrowC.visible = true;
+					handleArrowA.visible = true;
+					edgePickedCA = true;
+					
+				} else {
+					
+					// face is picked
+					
+					handleArrowA.setDirection( paVn );
+					handleArrowB.setDirection( pbVn );
+					handleArrowC.setDirection( pcVn );
+					handleArrowA.setLength( paD, paD / 2, paD / 16 );
+					handleArrowB.setLength( pbD, pbD / 2, pbD / 16 );
+					handleArrowC.setLength( pcD, pcD / 2, pcD / 16 );
+					handleArrowA.visible = true;
+					handleArrowB.visible = true;
+					handleArrowC.visible = true;
+					facePicked = true;
+					
+				}
+				
+			}
+			
+		}
+		
+	}
+}
+
+function move() {
+	
+	if ( vertexPickedA || edgePickedAB || edgePickedCA || facePicked ) {
+		
+		btnIndexA.innerHTML = a;
+		ax = handlePos.x + paV.x;
+		ay = handlePos.y + paV.y;
+		az = handlePos.z + paV.z;
+		
+	}
+	
+	if ( vertexPickedB || edgePickedAB || edgePickedBC || facePicked ) {
+		
+		btnIndexB.innerHTML = b;
+		bx = handlePos.x + pbV.x;
+		by = handlePos.y + pbV.y;
+		bz = handlePos.z + pbV.z;
+		
+	}
+	
+	if ( vertexPickedC || edgePickedBC || edgePickedCA || facePicked ) {
+		
+		btnIndexC.innerHTML = c;
+		cx = handlePos.x + pcV.x;
+		cy = handlePos.y + pcV.y;
+		cz = handlePos.z + pcV.z;
+		
+	}
+
+}
+
+function onContainerMouseMove( event ) {
+	
+	event.preventDefault( );
+	
+	if ( !InpChoosed.checked ) {
+		
+		mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+		mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+		
+		raycaster.setFromCamera( mouse, camera );
+		
+		if ( selection ) {
+			
+			// Position section with auxiliary plane
+			intersects = raycaster.intersectObject( auxiliaryPlane );
+			handlePos = intersects[0].point;
+			
+			handlePoint.position.copy( handlePos );
+			move();
+			
+		} else {
+			
+			// new position auxiliary layer (if necessary)
+			intersects = raycaster.intersectObject( mesh );
+			
+			if ( intersects.length > 0) {
+				
+				auxiliaryPlane.position.copy( handlePos );
+				auxiliaryPlane.quaternion.copy( camera.quaternion )
+				
+			}
+			
+		}
+		
+	}
+
+}
+
+function onContainerMouseUp( event ) {
+	
+	// new position auxiliary layer (if necessary)
+	intersects = raycaster.intersectObject( mesh );
+	
+	if (intersects.length > 0) {
+		
+		auxiliaryPlane.position.copy( intersects[0].object.position );
+		auxiliaryPlane.quaternion.copy( camera.quaternion )
+		
+	}
+	
+	controls.enabled = true;
+	selection = null;
+	handlePoint.visible = false;
+	keyCode = null;
+	
+}
+
+function arrowAuxiliaryAxis( axes ) {
+	
+	var dir;
+	var origin = new THREE.Vector3( 0, 0, 0 );
+	var len = 1;
+	var col = 0xffffff;
+	var headLength = len / 32;
+	var headWidth = headLength;
+	if ( axes === "x" ) dir = new THREE.Vector3( 1, 0, 0 );
+	if ( axes === "y" ) dir = new THREE.Vector3( 0, 1, 0 );
+	if ( axes === "z" ) dir = new THREE.Vector3( 0, 0, 1 );
+	var arrow = new THREE.ArrowHelper( dir, origin, len, col, headLength, headWidth );
+	auxiliaryPlane.add( arrow );
+	
+}
+
+function outputJavaScript( ) {
+	
+	var vc3 = geo.vertices.length;
+	var fic = geo.faceIndices.length;
+	var fc = geo.faceIndices.length / 3;
+	var uvc2 = geo.uvs.length;
+	var out = "";
+	var ffd = Math.pow( 10, nDec.value );
+	
+	// round for output
+	function round( x ) {
+		
+		return Math.floor( x * ffd ) / ffd;
+		
+	}
+	
+	// --- generate JavaScript code ---
+	
+	output.innerHTML  = "/*... BufferGeometry generated with addon THREEf<br />and modifyGeo.html ...*/<br />";
+	
+	out += "var geo = new THREE.BufferGeometry();<br />";
+	
+	out += "geo.faceIndices = new Uint32Array( [ ";
+	
+	for ( var i = 0; i < fic; i ++ ) {
+		
+		out += geo.faceIndices[ i ];
+		out += i < fic - 1  ? ", " : "";
+		
+	}
+	
+	out += " ] );<br />";
+	
+	out += "geo.vertices = new Float32Array( [ ";
+	
+	for ( var v = 0; v < vc3 ; v ++ ) {
+		
+		out += round( geo.vertices[ v ] );
+		out += v < vc3 - 1  ? ", " : "";
+		
+	}
+	
+	out += " ] );<br />";
+	
+	out += "geo.normals = new Float32Array( [ ";
+	
+	for ( var v = 0; v < vc3 ; v ++ ) {
+		
+		out +=  round( geo.normals[ v ] );
+		out += v < vc3 - 1  ? ", " : "";
+		
+	}
+	
+	out += " ] );<br />"
+	
+	out += "geo.uvs = new Float32Array( [ ";
+	
+	for ( var v = 0; v < uvc2 ; v ++ ) {
+		
+		out +=  round( geo.uvs[ v ] );
+		out += v < uvc2 - 1  ? ", " : "";
+		
+	}
+	
+	out += " ] );<br />"
+	
+	out += "geo.setIndex( new THREE.BufferAttribute( geo.faceIndices, 1 ) );<br />geo.addAttribute( 'position', new THREE.BufferAttribute( geo.vertices, 3 ).setDynamic( true ) );<br />geo.addAttribute( 'normal', new THREE.BufferAttribute( geo.normals, 3 ).setDynamic( true ) );<br />geo.addAttribute( 'uv', new THREE.BufferAttribute( geo.uvs, 2 ) );<br />";
+	
+	out += "var geoGrp = [ ";
+	
+	for ( var f = 0, p = 0; f < fc ; f ++, p += 3 ) { 
+		
+		out += geo.groups[ f ].start + ", " + geo.groups[ f ].count + ", " + geo.groups[ f ].materialIndex ;
+		out += f < fc - 1  ? ", " : "";
+		
+	}
+	
+	out += " ];<br />";
+	
+	out += "for ( var f = 0, p = 0; f < " + fc + "; f ++, p += 3 ) { geo.addGroup( geoGrp[ p ], geoGrp[ p + 1 ], geoGrp[ p + 2 ] ); }<br />";
+	
+	if ( geo.quadLine && quad ) {
+		
+		out += "geo.lineGeometry = new THREE.BufferGeometry();<br />";
+		out += "geo.quadColor = 0x" + geo.quadColor.toString(16) + ";<br />";
+		out += "geo.quadLine = new THREE.Line( geo.lineGeometry, new THREE.LineBasicMaterial( { color: geo.quadColor } ) );<br />";
+		
+		out += "geo.linePositions = new Float32Array( [ ";
+		
+		var glc = geo.linePositions.length;
+		
+		for ( var v = 0; v < glc; v ++ ) {
+			
+			out +=  round( geo.linePositions[ v ] );
+			out += v < glc - 1  ? ", " : "";
+			
+		}
+		
+		out += " ] ); <br /> ";
+		
+		out += "geo.lineGeometry.addAttribute( 'position', new THREE.BufferAttribute( geo.linePositions, 3 ) );<br />";
+		
+	}
+	
+	
+	output.innerHTML += out;
+	
+	code = document.createElement( "textarea" );
+	code.value = output.innerHTML.replaceAll( '<br>', '\r\n' ).replaceAll( '&lt;', '<' ).replaceAll( '&gt;', '>' );
+	document.body.appendChild( code );
+	code.select();
+	document.execCommand( "Copy" );
+	document.body.removeChild( code );
+	
+}
+
+function round( x ) {
+	
+	var d = Math.pow( 10, nDec.value );
+	return Math.floor( x * d ) / d;
+	
+}
+
+function animate( ) {
+	
+	requestAnimationFrame( animate );
+	
+	if ( statusInp !== InpChoosed.checked ) enableDisableInp( );
+	
+	if ( InpChoosed.checked ) {
+		
+		faceIdx = faceIndex.value < geo.faceIndices.length / 3 ? faceIndex.value : geo.faceIndices.length / 3;
+		
+		a = geo.faceIndices[ faceIdx * 3 ];
+		b = geo.faceIndices[ faceIdx * 3 + 1 ];
+		c = geo.faceIndices[ faceIdx * 3 + 2 ];
+		
+		if ( currentFaceIdx !== faceIdx ) {
+			
+			btnIndexA.innerHTML = a;
+			numberAx.value = rangeAx.value = round( geo.vertices[ a * 3 ] );
+			numberAy.value = rangeAy.value = round( geo.vertices[ a * 3 + 1 ] );
+			numberAz.value = rangeAz.value = round( geo.vertices[ a * 3 + 2 ] );
+			
+			btnIndexB.innerHTML = b;
+			numberBx.value = rangeBx.value = round( geo.vertices[ b * 3 ] );
+			numberBy.value = rangeBy.value = round( geo.vertices[ b * 3 + 1 ] );
+			numberBz.value = rangeBz.value = round( geo.vertices[ b * 3 + 2 ] );
+			
+			btnIndexC.innerHTML = c;
+			numberCx.value = rangeCx.value = round( geo.vertices[ c * 3 ] );
+			numberCy.value = rangeCy.value = round( geo.vertices[ c * 3 + 1 ] );
+			numberCz.value = rangeCz.value = round( geo.vertices[ c * 3 + 2 ] );
+			
+			currentFaceIdx = faceIdx;
+			
+		}
+		
+		if ( useRangeAx.checked ) ax = numberAx.value = round( rangeAx.value );
+		if ( useRangeAy.checked ) ay = numberAy.value = round( rangeAy.value );
+		if ( useRangeAz.checked ) az = numberAz.value = round( rangeAz.value );
+		
+		if ( useRangeBx.checked ) bx = numberBx.value = round( rangeBx.value );
+		if ( useRangeBy.checked ) by = numberBy.value = round( rangeBy.value );
+		if ( useRangeBz.checked ) bz = numberBz.value = round( rangeBz.value );
+		
+		if ( useRangeCx.checked ) cx = numberCx.value = round( rangeCx.value );
+		if ( useRangeCy.checked ) cy = numberCy.value = round( rangeCy.value );
+		if ( useRangeCz.checked ) cz = numberCz.value = round( rangeCz.value );
+		
+		if ( useNumberAx.checked ) ax = rangeAx.value = round( numberAx.value );
+		if ( useNumberAy.checked ) ay = rangeAy.value = round( numberAy.value );
+		if ( useNumberAz.checked ) az = rangeAz.value = round( numberAz.value );
+		
+		if ( useNumberBx.checked ) bx = rangeBx.value = round( numberBx.value );
+		if ( useNumberBy.checked ) by = rangeBy.value = round( numberBy.value );
+		if ( useNumberBz.checked ) bz = rangeBz.value = round( numberBz.value );
+		
+		if ( useNumberCx.checked ) cx = rangeCx.value = round( numberCx.value );
+		if ( useNumberCy.checked ) cy = rangeCy.value = round( numberCy.value );
+		if ( useNumberCz.checked ) cy = rangeCy.value = round( numberCy.value );
+		
+	}
+	
+	if ( !InpChoosed.checked ) {
+		
+		numberAx.value = rangeAx.value = round( ax );
+		numberAy.value = rangeAy.value = round( ay );
+		numberAz.value = rangeAz.value = round( az );
+		
+		numberBx.value = rangeBx.value = round( bx );
+		numberBy.value = rangeBy.value = round( by );
+		numberBz.value = rangeBz.value = round( bz );
+		
+		numberCx.value = rangeCx.value = round( cx );
+		numberCy.value = rangeCy.value = round( cy );
+		numberCz.value = rangeCz.value = round( cz );
+		
+	}
+	
+	btnIndexA.innerHTML = a;
+	btnIndexB.innerHTML = b;
+	btnIndexC.innerHTML = c;
+	
+	geo.vertices[ a * 3 ] = round( ax );
+	geo.vertices[ a * 3 + 1 ] = round( ay );
+	geo.vertices[ a * 3 + 2 ] = round( az );
+	
+	geo.vertices[ b * 3 ] = round( bx );
+	geo.vertices[ b * 3 + 1 ] = round( by );
+	geo.vertices[ b * 3 + 2 ] = round( bz );
+	
+	geo.vertices[ c * 3 ] = round( cx );
+	geo.vertices[ c * 3 + 1 ] = round( cy );
+	geo.vertices[ c * 3 + 2 ] = round( cz );
+	
+	geo.attributes.position.needsUpdate = true;
+	geo.attributes.normal.needsUpdate = true;
+	
+	vertexFaceNumbersHelper.update( 3 );
+	
+	renderer.render( scene, camera );
+	
+}
+
+</script> 
+</html>

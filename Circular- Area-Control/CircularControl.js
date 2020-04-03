@@ -16,7 +16,7 @@
 		<div id="sliderContainer"></div>
  
 	</body>
-	|
+	
 // in HTML
 */
 

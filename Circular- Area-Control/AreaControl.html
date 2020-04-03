@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/circular-control-used-for-walkable-areas-control/14057 -->
+<!-- https://github.com/hofk/threejsResources/tree/master/Circular-%20Area-Control -->
+
+<head>
+	<title> AreaControl </title>
+	<meta charset="utf-8" />
+	<style>
+		body { 
+			margin: 0;
+		}
+		.slider {
+			-webkit-appearance: none;
+			width: 100%;
+			height: 10px;
+			border-radius: 5px;
+			background: #dddddd;
+			outline: none;
+			opacity: 0.5;
+			-webkit-transition: .2s;
+			transition: opacity .2s;
+		}
+		.slider:hover {
+			opacity: 1;
+		}
+		
+		.slider::-webkit-slider-thumb {
+			-webkit-appearance: none;
+			appearance: none;
+			width: 32px;
+			height: 32px;
+			border: 0;
+			border-radius: 16px;
+			background: url('ccimg/faster32.png');
+			cursor: pointer;
+		}
+		
+		.slider::-moz-range-thumb {
+			width: 32px;
+			height: 32px;
+			border: 0;
+			border-radius: 16px;
+			background: url('ccimg/faster32.png');
+			cursor: pointer;
+		}
+	</style>
+</head>
+
+
+<body ondragover="drag_over( event )" ondrop="drop( event )" >
+
+<div id="navPane" draggable="true" ondragstart="drag_start( event )">
+
+</div>
+
+<div id="sliderContainer">
+	<input id="velocityRange" type="range" min="0" max="100" value="50" class="slider" >
+	<span id="showVelocity"></span>
+</div>
+
+</body>
+
+<script src="js/three.min.115.js"></script>
+<script src="js/THREEx.WindowResize.js"></script>
+ 
+<script src="js/Reflector.115.js"></script>
+
+<script src="AreaControl.js"></script>
+
+<script>
+
+'use strict'
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.001, 1000 );
+
+const renderer = new THREE.WebGLRenderer( { antialias: true } );
+renderer.setSize( window.innerWidth, window.innerHeight );
+
+const container = document.createElement('div');
+document.body.appendChild( container );
+container.appendChild( renderer.domElement );
+
+THREEx.WindowResize( renderer, camera );
+
+// viewers' eyes ( between the eyes, intranasal)
+const camHolder = new THREE.Group( );
+camHolder.add( camera );
+
+//const camHolderMesh = new THREE.Mesh( new THREE.SphereBufferGeometry( 0.01, 3, 3 ), new THREE.MeshBasicMaterial( { color: 0x0022ff, wireframe: true } ) );
+//camHolder.add( camHolderMesh ); // to show the position of the camera (intranasal)
+
+camHolder.position.set( 0, 1.4, 0 ); //   1.4 eye level above ground
+scene.add( camHolder );
+
+let room = new THREE.Object3D( );
+
+const light = new THREE.DirectionalLight( 0xffffff, 0.6);
+light.position.setScalar( 10 );
+scene.add( light );
+scene.add(new THREE.AmbientLight( 0xffffff, 0.8));
+
+const planeGeo = new THREE.PlaneBufferGeometry( 40, 40 );
+planeGeo.rotateX( -Math.PI / 2) ;
+const plane = new THREE.Mesh( planeGeo, new THREE.MeshBasicMaterial( {  color: "darkgray" } ) );
+plane.positionY = -0.001;
+scene.add(plane);
+
+scene.add( new THREE.GridHelper( 40, 12 ) );
+scene.add( new THREE.AxesHelper( 22 ) );
+
+// walkable areas as an array of arrays, use overlapping/touching circles, rectangles, triangles
+const walkableAreas = [ // do not change name, used in AreaControl.js
+	
+	// circle x, z, r
+	[ 'circle', 10, -4, 3 ],
+	[ 'circle', 13, 13, 6 ],
+	
+	// rectangle  xMin, zMin, xMax, zMax
+	[ 'rectangle',  -5, -19.4,   5,  3 ],
+	[ 'rectangle', -19, -14,   -11, 16 ],
+	[ 'rectangle',   5,  -8,    15, -6 ],
+	[ 'rectangle',  15, -14,    19, 13 ],
+	[ 'rectangle', -11,  11,    13, 19 ],
+	
+	// triangle    xa, za,  xb, zb,  xc, zc (clockwise)
+	[ 'triangle', -19, -14,  -5, -19,  -4, -14 ],
+	[ 'triangle',   5, -19,  19, -14,   5, -14 ],
+	[ 'triangle',  -6,   3,   1,   3,  -6,  17 ],
+	
+];
+
+for ( let i = 0; i < walkableAreas.length; i ++ ) { // only to colour mark walkable areas
+	
+	switch ( walkableAreas[ i ][ 0 ]  ) {
+	
+		case 'circle': makeCircle( i );
+		break;
+		
+		case 'rectangle': makeRectangle( i );
+		break;
+		
+		case 'triangle': makeTriangle( i );
+		break;
+		
+	}
+	
+}
+
+const wall = new THREE.Mesh( new THREE.PlaneBufferGeometry( 40, 12 ), new THREE.MeshBasicMaterial( { color: 0x000000, transparent: true, opacity: 0.5 } ) );
+wall.position.set( 0, 6, -20 );
+room.add( wall );
+
+const mirrorBase = new THREE.Mesh( new THREE.PlaneBufferGeometry( 19.4, 5.4 ),  new THREE.MeshBasicMaterial( { color: 0xffffcc } ) );
+mirrorBase.position.set( 0, 2.7, -19.75 );
+room.add( mirrorBase );
+
+const mirrorColor =  0x889999; // default color
+const reflector  = new THREE.Reflector(
+					new THREE.PlaneBufferGeometry( 19, 5 ), {
+						textureWidth: window.innerWidth * window.devicePixelRatio,
+						textureHeight: window.innerHeight * window.devicePixelRatio,
+						color: mirrorColor,
+						recursion: 1 }
+			);
+
+reflector.position.set( 0, 2.7, -19.5 );
+room.add( reflector );
+
+const gBox = new THREE.BoxBufferGeometry( 3, 4, 18 );
+const box = new THREE.Mesh( gBox, new THREE.MeshBasicMaterial( { color: 0x22ff99, transparent: true, opacity: 0.8 } ) );
+box.position.set( -8.5, 0, -4 );
+room.add( box );
+
+const gTrcCone = new THREE.CylinderBufferGeometry( 1, 3, 6, 12, 1, false );
+const trcCone = new THREE.Mesh( gTrcCone, new THREE.MeshBasicMaterial( { color: 0xffee11, transparent: true, opacity: 0.7 } ) );
+trcCone.position.set( 4, 0, 7 );
+room.add( trcCone );
+
+const gTorus = new THREE.TorusBufferGeometry( 2.5, 0.5, 16, 100 );
+const torus = new THREE.Mesh( gTorus, new THREE.MeshBasicMaterial( { color: 0x22eeff, transparent: true, opacity: 0.7 } ) );
+torus.position.set( 10, 3, -11 );
+room.add( torus );
+
+const viewer = makeViewer( );
+room.add( viewer );
+ 
+scene.add( room ); 
+
+// surrounding
+
+const surroundingTextur = [ 'CubeMap/posx.jpg', 'CubeMap/negx.jpg', 'CubeMap/posy.jpg', 'CubeMap/negy.jpg', 'CubeMap/posz.jpg', 'CubeMap/negz.jpg' ];
+
+scene.background = new THREE.CubeTextureLoader( ).load( surroundingTextur );
+
+animate();
+
+function animate( ) {
+	
+	requestAnimationFrame( animate );
+	move( ); 
+	renderer.render( scene, camera );
+	
+}
+
+// .........................................................
+
+function makeViewer( ) {
+	
+	const x = camHolder.position.x;
+	const y = camHolder.position.y;
+	const z = camHolder.position.z;
+	
+	const viewer = new THREE.Object3D( );
+	
+	const mat = new THREE.MeshPhongMaterial( { color: 0xcc0022, wireframe: false } );
+	const matEye  = new THREE.MeshPhongMaterial( { color: 0xffffff } );
+	
+	viewer.add( makeSphere( 0.1, 48, x, y - 1.4, z + 0.1, mat ) );
+	viewer.add( makeSphere( 0.01, 16, x - 0.03, y - 1.4, z + 0.01, matEye ) );
+	viewer.add( makeSphere( 0.01, 16, x + 0.03, y - 1.4, z + 0.01, matEye ) );
+	
+	viewer.add( makeCylinder( 0.04, 0.04, 16, 1, x, y - 1.50, z + 0.1, mat ) );
+	viewer.add( makeCylinder( 0.14, 0.60, 24, 1, x, y - 1.82, z + 0.1, mat ) );
+	
+	viewer.add( makeCylinder( 0.03, 0.40, 18, 1, x - 0.15, y - 1.72, z + 0.1, mat ) );
+	viewer.add( makeCylinder( 0.03, 0.40, 18, 1, x + 0.15, y - 1.72, z + 0.1, mat ) );
+	
+	viewer.add( makeCylinder( 0.04, 0.60, 18, 1, x - 0.05, y - 2.39, z + 0.1, mat ) );
+	viewer.add( makeCylinder( 0.04, 0.60, 18, 1, x + 0.05, y - 2.39, z + 0.1, mat ) );
+	
+	const direction = new THREE.Mesh( new THREE.PlaneBufferGeometry( 0.04, 8 ), new THREE.MeshBasicMaterial( { color: 0xdedede, side: THREE.DoubleSide } ) );
+	direction.rotation.x = Math.PI / 2;
+	direction.position.set( 0, y - 2.65, -4 );
+	
+	viewer.position.y = y;
+	viewer.add ( direction );
+	
+	return  viewer
+	
+}
+
+function makeSphere( r, gr, x, y, z, material ) {
+	
+	const sph  = new THREE.Mesh( new THREE.SphereBufferGeometry( r, gr, gr ), material );
+	sph.position.set( x, y, z) ;
+	return sph;
+	
+}
+
+function makeCylinder( r, h, gr, gh, x, y, z, material ) {
+	
+	const cyl = new THREE.Mesh( new THREE.CylinderBufferGeometry( r, r, h, gr, gh, false ), material );
+	cyl.position.set( x, y, z );
+	return cyl;
+	
+}
+
+function makeCircle( i ) {
+	
+	const yd = 0.15;
+	const gCircle = new THREE.CircleBufferGeometry( walkableAreas[ i ][ 3 ], 36 );
+	
+	const circle = new THREE.Mesh( gCircle, new THREE.MeshBasicMaterial( { color: 0xff0055, side: THREE.DoubleSide, transparent: true, opacity: 0.1 } ) )
+	circle.rotation.x = Math.PI / 2;
+	circle.position.set( walkableAreas[ i ][ 1 ], yd, walkableAreas[ i ][ 2 ])
+	scene.add( circle );
+	
+}
+
+function makeRectangle( i ) {
+	
+	const yd = 0.1;
+	const positions = new Float32Array( [
+		
+		walkableAreas[ i ][ 1 ], yd, walkableAreas[ i ][ 2 ],
+		walkableAreas[ i ][ 3 ], yd, walkableAreas[ i ][ 4 ],
+		walkableAreas[ i ][ 3 ], yd, walkableAreas[ i ][ 2 ],
+		
+		walkableAreas[ i ][ 1 ], yd, walkableAreas[ i ][ 2 ],
+		walkableAreas[ i ][ 1 ], yd, walkableAreas[ i ][ 4 ],
+		walkableAreas[ i ][ 3 ], yd, walkableAreas[ i ][ 4 ]
+		
+	] );
+	
+	const gRectangle = new THREE.BufferGeometry();
+	gRectangle.setAttribute( 'position', new THREE.BufferAttribute( positions, 3 ) );
+	
+	scene.add( new THREE.Mesh( gRectangle, new THREE.MeshBasicMaterial( { color: 0x55ff00, side: THREE.DoubleSide, transparent: true, opacity: 0.1 } ) ) );
+	
+}
+
+function makeTriangle( i ) {
+	
+	const yd = 0.05;
+		
+	const positions = new Float32Array( [
+		
+		walkableAreas[ i ][ 1 ], yd, walkableAreas[ i ][ 2 ],
+		walkableAreas[ i ][ 3 ], yd, walkableAreas[ i ][ 4 ],
+		walkableAreas[ i ][ 5 ], yd, walkableAreas[ i ][ 6 ]
+		
+	] );
+	
+	const gTriangle = new THREE.BufferGeometry();
+	gTriangle.setAttribute( 'position', new THREE.BufferAttribute( positions, 3 ) );
+	
+	scene.add( new THREE.Mesh( gTriangle, new THREE.MeshBasicMaterial( { color: 0x0055ff, side: THREE.DoubleSide, transparent: true, opacity: 0.1 } ) ) );
+	
+}	
+
+</script>
+</html>

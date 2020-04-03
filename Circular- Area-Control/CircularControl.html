@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/circular-control-used-for-walkable-areas-control/14057 -->
+<!-- https://github.com/hofk/threejsResources/tree/master/Circular-%20Area-Control -->
+
+<head>
+	<title> CircularControl </title>
+	<meta charset="utf-8" />
+	<style>
+		body { 
+			margin: 0;
+		}
+	</style>
+</head>
+
+<body ondragover="drag_over( event )" ondrop="drop( event )" >
+
+	<div id="navPane" draggable="true" ondragstart="drag_start( event )"></div>
+	
+	<div id="sliderContainer"></div>
+ 
+</body>
+
+<script src="js/three.min.115.js"></script>
+<script src="js/THREEx.WindowResize.js"></script>
+
+<script src="CircularControl.js"></script>
+
+<script>
+
+'use strict'
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.001, 1000 );
+
+const renderer = new THREE.WebGLRenderer( { antialias: true } );
+renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setClearColor( 0x787878, 1 );
+
+const container = document.createElement('div');
+document.body.appendChild( container );
+container.appendChild( renderer.domElement );
+
+THREEx.WindowResize( renderer, camera );
+
+animate();
+
+function animate( ) {
+	
+	requestAnimationFrame( animate ); 
+	renderer.render( scene, camera );
+	
+}
+</script>
+</html>

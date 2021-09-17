@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/round-edged-box-flat/30012 --> 
+<head>
+	<title> RoundEdgedBoxFlat </title>
+	<meta charset="utf-8" />
+	<style>	
+	body {  margin: 0; }
+	</style>
+</head>
+<body>
+ 
+</body>
+ 
+ <script type="module">
+ 
+// @author hofk
+ 
+import * as THREE from "../jsm/three.module.132.js";
+import { OrbitControls } from "../jsm/OrbitControls.132.js";
+ 
+const scene = new THREE.Scene( );
+const camera = new THREE.PerspectiveCamera( 55, window.innerWidth / window.innerHeight, 0.01, 10000 );
+camera.position.set( 4, 12, 12 );
+const renderer = new THREE.WebGLRenderer( { antialias: true } );
+renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setClearColor( 0xdedede, 1 );	
+const container = document.createElement( 'div' );
+document.body.appendChild( container );
+container.appendChild( renderer.domElement );
+const axesHelper = new THREE.AxesHelper( 10 );
+scene.add( axesHelper );
+
+const controls = new OrbitControls( camera, renderer.domElement );
+
+const directionalLight01 = new THREE.DirectionalLight( 0xffffff, 1.8 );
+directionalLight01.position.set( 4, 40, 25 );
+scene.add( directionalLight01 );
+const directionalLight02 = new THREE.DirectionalLight( 0xbbffdd, 1.4 );
+directionalLight02.position.set( -28, -30, 30 );
+scene.add( directionalLight02 );
+ 
+const texturLoader = new THREE.TextureLoader( );
+const ropeTexture = texturLoader.load( 'Rope_001_SD/Rope_001_basecolor.jpg' ); // https://3dtextures.me/
+ropeTexture.wrapS = THREE.RepeatWrapping;
+ropeTexture.wrapT = THREE.RepeatWrapping;
+ropeTexture.repeat.set( 400, 4 );
+const ropeRoughnessMap = texturLoader.load( 'Rope_001_SD/Rope_001_roughness.jpg' );
+const ropeMaterial =  new THREE.MeshStandardMaterial( {	map: ropeTexture,roughnessMap: ropeRoughnessMap } );
+ 
+const material = [
+
+	new THREE.MeshBasicMaterial( { map: texturLoader.load( 'uvgrid01.png' ), side: THREE.DoubleSide, wireframe: false } ),
+	new THREE.MeshBasicMaterial( { map: texturLoader.load( 'uv_grid_opengl.jpg' ), side: THREE.DoubleSide, wireframe: false } ),
+	ropeMaterial
+	
+];
+ 
+// const material = new THREE.MeshBasicMaterial( { color: 0xff00ff, side: THREE.DoubleSide, wireframe: true } );
+
+const w = 16;	// width
+const h =  9;	// height
+const t =  0.2;	// thick
+const r =  2;	// radius corner
+const s = 36;	// smoothness
+
+const geometry = RoundEdgedBoxFlat( w, h, t, r, s );
+geometry.computeVertexNormals( );
+const mesh = new THREE.Mesh( geometry, material );
+scene.add( mesh );
+
+animate( );  
+
+function animate( ) {
+	
+	requestAnimationFrame( animate );
+	renderer.render( scene, camera );
+		
+}
+
+// non indexed BufferGeometry
+
+function RoundEdgedBoxFlat( w, h, t, r, s ) { // width, height, thick, radius corner, smoothness
+	
+	// helper const's and let's
+	const wi = w / 2 - r;		// inner width, half
+	const hi = h / 2 - r;		// inner height, half 
+	const w2 = w / 2;			// half width
+	const h2 = h / 2;			// half height
+
+	let ul = r / w;				// u left front side
+	let ur = ( w - r ) / w;		// u right front side
+	const vl = r / h;			// v low
+	const vh = ( h - r ) / h;	// v high
+	
+	let phia, phib, xc, yc, uc, vc, cosa, sina, cosb, sinb;
+	
+	let positions = [];
+	let uvs = [];
+	
+	// for front side
+	let t2 = t / 2;			// +  half thick
+	let u0 = ul;
+	let u1 = ur;
+	let u2 = 0;
+	let u3 = 1;
+	let sign = 1;
+		
+	for( let k = 0; k < 2; k ++ ) {  // front and back side
+		
+		positions.push(
+		
+			-wi, -h2, t2,  wi, -h2, t2,  wi, h2, t2,
+			-wi, -h2, t2,  wi,  h2, t2, -wi, h2, t2,
+			-w2, -hi, t2, -wi, -hi, t2, -wi, hi, t2,
+			-w2, -hi, t2, -wi,  hi, t2, -w2, hi, t2,
+			 wi, -hi, t2,  w2, -hi, t2,  w2, hi, t2,
+			 wi, -hi, t2,  w2,  hi, t2,  wi, hi, t2
+			
+		);
+		
+		uvs.push(
+		
+			u0,  0, u1,  0, u1,  1,
+			u0,  0, u1,  1, u0,  1,
+			u2, vl, u0, vl, u0, vh,
+			u2, vl, u0, vh, u2, vh,
+			u1, vl, u3, vl, u3, vh,
+			u1, vl, u3, vh,	u1, vh
+		
+		);
+			
+		phia = 0; 
+		
+		for ( let i = 0; i < s * 4; i ++ ) {
+		
+			phib = Math.PI * 2 * ( i + 1 ) / ( 4 * s );
+			
+			cosa = Math.cos( phia );
+			sina = Math.sin( phia );
+			cosb = Math.cos( phib );
+			sinb = Math.sin( phib );
+			
+			xc = i < s || i >= 3 * s ? wi : -wi;
+			yc = i < 2 * s ? hi : -hi;
+		
+			positions.push( xc, yc, t2,  xc + r * cosa, yc + r * sina, t2,  xc + r * cosb, yc + r * sinb, t2 );
+			
+			uc = i < s || i >= 3 * s ? u1 : u0;
+			vc = i < 2 * s ? vh : vl;
+			
+			uvs.push( uc, vc, uc + sign * ul * cosa, vc + vl * sina, uc + sign * ul * cosb, vc + vl * sinb );
+ 
+			phia = phib;
+				
+		}
+		
+		// for back side
+		t2 = -t2;	// - half thick
+		u0 = ur;	// right left exchange
+		u1 = ul;
+		u2 = 1;
+		u3 = 0;
+		sign = -1;
+		
+	}
+	
+	// framing
+	
+	t2 = t / 2;	// + half thick (again)
+	 
+	positions.push(
+		
+		-wi, -h2,  t2, -wi, -h2, -t2,  wi, -h2, -t2,
+		-wi, -h2,  t2,  wi, -h2, -t2,  wi, -h2,  t2,
+		 w2, -hi,  t2,  w2, -hi, -t2,  w2,  hi, -t2,
+		 w2, -hi,  t2,  w2,  hi, -t2,  w2,  hi,  t2,
+		 wi,  h2,  t2,  wi,  h2, -t2, -wi,  h2, -t2,
+		 wi,  h2,  t2, -wi,  h2, -t2, -wi,  h2,  t2,
+		-w2,  hi,  t2, -w2,  hi, -t2, -w2, -hi, -t2,
+		-w2,  hi,  t2, -w2, -hi, -t2, -w2, -hi,  t2
+		
+	);
+
+	const cf = 2 * ( ( w + h - 4 * r ) + Math.PI * r ); // circumference
+	const cc4 = Math.PI * r / 2 / cf  // circle-circumference / 4 / circumference
+	u0 = 0;
+	u1 = 2 * wi / cf;
+	u2 = u1 + cc4;
+	u3 = u2 + 2 * hi / cf;
+	
+	const u4 = u3 + cc4;
+	const u5 = u4 + 2 * wi / cf;
+	const u6 = u5 + cc4;
+	const u7 = u6 + 2 * hi / cf;
+	
+	uvs.push(
+		
+		u0, 1,  0, 0, u1, 0,
+		u0, 1, u1, 0, u1, 1,
+		u2, 1, u2, 0, u3, 0,
+		u2, 1, u3, 0, u3, 1,
+		u4, 1, u4, 0, u5, 0,
+		u4, 1, u5, 0, u5, 1,
+		u6, 1, u6, 0, u7, 0, 
+		u6, 1, u7, 0, u7, 1
+		
+	);
+	
+	phia = 0; 
+	let u, j, j1;
+	const ccs = cc4 / s; // partial value according to smoothness
+	
+	for ( let i = 0; i < s * 4; i ++ ) {
+	
+		phib = Math.PI * 2 * ( i + 1 ) / ( 4 * s );
+		
+		cosa = Math.cos( phia );
+		sina = Math.sin( phia );
+		cosb = Math.cos( phib );
+		sinb = Math.sin( phib );
+		
+		xc = i < s || i >= 3 * s ? wi : -wi;
+		yc = i < 2 * s ? hi : -hi;
+		
+		positions.push( xc + r * cosa, yc + r * sina, t2,  xc + r * cosa, yc + r * sina, -t2,  xc + r * cosb, yc + r * sinb, -t2 );
+		positions.push( xc + r * cosa, yc + r * sina, t2,  xc + r * cosb, yc + r * sinb, -t2,  xc + r * cosb, yc + r * sinb,  t2 );
+		
+		u = i < s ? u3 : ( i < 2 * s ? u5 : ( i < 3 * s ? u7 : u1 ) ); // Attention! different start to front/back
+		
+		j = i % s;
+		j1 = j + 1;
+		
+		uvs.push( u + j * ccs, 1,  u + j  * ccs, 0,  u + j1 * ccs, 0 );
+		uvs.push( u + j * ccs, 1,  u + j1 * ccs, 0,  u + j1 * ccs, 1 );
+		
+		phia = phib;
+			
+	}
+	
+	const geometry = new THREE.BufferGeometry( );
+	geometry.setAttribute( 'position', new THREE.BufferAttribute( new Float32Array( positions ), 3 ) );
+	geometry.setAttribute( 'uv', new THREE.BufferAttribute( new Float32Array( uvs ), 2 ) );
+	
+	// add multimaterial groups for front, back, framing
+	
+	const vtc = ( 6 + 4 * s ) * 3;		// vertex count one side
+	geometry.addGroup ( 0, vtc , 0 );
+	geometry.addGroup ( vtc, vtc , 1 );
+	geometry.addGroup ( 2 * vtc, 24 +  2 * 3  *  4 * s, 2 );
+	
+	return geometry;
+	
+}
+ 
+</script>
+</html>

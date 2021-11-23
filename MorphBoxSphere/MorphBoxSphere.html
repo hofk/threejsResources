@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/morphing-between-two-geometries/31911 -->
+<head>
+  <title> MorphBoxSphere </title>
+  <meta charset="utf-8" />
+    <meta charset="utf-8" />
+    <style>
+    body {
+        margin: 0; 
+        overflow: hidden;
+    }
+    </style>
+</head>
+<body> </body>
+
+<script src="../js/three.min.134.js"></script>
+<script src="../js/OrbitControls.134.js"></script>
+
+<script>
+
+// @author hofk
+
+const scene = new THREE.Scene();
+
+const camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.1, 1000 );
+camera.position.set( 0,  0, 10);
+
+const renderer = new THREE.WebGLRenderer( { antialias: true } );
+renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setClearColor( 0xdedede, 1 );
+document.body.appendChild( renderer.domElement );
+
+const controls = new THREE.OrbitControls( camera, renderer.domElement );
+
+const g = new THREE.BufferGeometry( );
+const r = 2;  // radius sphere === space cube diagonal
+const cs = 12;  // count of segments per side
+const v = t => 0.5 * ( 1 + Math.sin( t ) ); // norph function, result 0 .. 1
+
+CubeSphereGeometry( g, r, cs, v );
+
+const texturLoader = new THREE.TextureLoader( );
+ 
+const diceMaterial = [
+    
+	new THREE.MeshBasicMaterial( { map: texturLoader.load( 'dice/6.png' ), wireframe: false } ),
+    new THREE.MeshBasicMaterial( { map: texturLoader.load( 'dice/1.png' ), wireframe: false } ),
+    new THREE.MeshBasicMaterial( { map: texturLoader.load( 'dice/5.png' ), wireframe: false } ),
+    new THREE.MeshBasicMaterial( { map: texturLoader.load( 'dice/2.png' ), wireframe: false } ),
+    new THREE.MeshBasicMaterial( { map: texturLoader.load( 'dice/4.png' ), wireframe: false } ),
+    new THREE.MeshBasicMaterial( { map: texturLoader.load( 'dice/3.png' ), wireframe: false } ),
+
+];
+ 
+const diceMesh = new THREE.Mesh( g, diceMaterial );
+diceMesh.position.x = -4;
+scene.add( diceMesh )
+
+const basicMaterial = new THREE.MeshBasicMaterial( { color: 0xff00ff, wireframe: true, side: THREE.DoubleSide } );
+const basicMesh = new THREE.Mesh( g, basicMaterial );
+scene.add( basicMesh )
+
+const uvMaterial = new THREE.MeshBasicMaterial( { map: texturLoader.load( 'uv_grid_opengl.jpg' ), side: THREE.FrontSide, wireframe: false } );
+const uvMesh = new THREE.Mesh( g, uvMaterial );
+uvMesh.position.x = 4;
+scene.add( uvMesh )
+
+const axesHelper = new THREE.AxesHelper( r );
+scene.add( axesHelper );
+ 
+const clock = new THREE.Clock( );
+let t;
+
+animate( );
+
+function animate( ) {
+    
+    t = clock.getElapsedTime( );
+
+    requestAnimationFrame( animate );
+    g.morph( t );
+    renderer.render( scene, camera );
+    
+}
+
+function CubeSphereGeometry( g, r, cs, v ) {
+     
+    // const sd = r * 1 / Math.sqrt( 2 ); // 1/2 square diagonal
+    const ss = r * 1 / Math.sqrt( 3 ); // 1/2 square side
+    
+    const css = cs + 1;
+    const hvc = css + cs ;   // height vertex count
+    const vertexCount = css * css + cs * cs;
+    const faceCount = cs * cs * 4;
+    
+    let a0, b0, c0, a1, b1, c1, le;
+    
+    const indices = new Uint32Array( faceCount * 3 * 6 );
+    g.positions = new Float32Array( vertexCount * 3 * 6 );   
+    uvs = new Float32Array( vertexCount * 2 * 6 ); // uvs to positions
+    
+    g.setIndex( new THREE.BufferAttribute( indices, 1 ) );
+    g.setAttribute( 'position', new THREE.BufferAttribute( g.positions, 3 ).setUsage( THREE.DynamicDrawUsage) );
+    g.setAttribute( 'uv', new THREE.BufferAttribute( uvs, 2 ) );
+    
+    g.cube = new Float32Array( vertexCount * 3 * 6 ); // basis positions plane,cube
+    g.diff = new Float32Array( vertexCount * 3 * 6 ); // difference positions cube sphere
+    
+    let idx = 0;
+    let offs = 0;
+    
+    makeIndices( );    
+
+    idx = 0; // reset
+    
+               // ia, ib, ic, sign 
+    makePositions( 0,  1,  2,  1 );
+    makePositions( 0,  1,  2, -1 );
+    makePositions( 1,  2,  0,  1 );
+    makePositions( 1,  2,  0, -1 );
+    makePositions( 2,  0,  1,  1 );
+    makePositions( 2,  0,  1, -1 );
+    
+    idx = 0; // reset
+    
+         // ia, ib, o1, o2      ia, ib: index    o1, o2: orientation
+    makeUVs( 0,  1,  1,  1 );
+    makeUVs( 0,  1, -1,  1 );
+    makeUVs( 1,  0,  1, -1 );
+    makeUVs( 1,  0,  1,  1 );
+    makeUVs( 1,  0,  1, -1 );
+    makeUVs( 1,  0,  1,  1 );
+    
+    function makeIndices( ) {
+    
+        let materialIndex = 0;
+        let startIdx = 0;
+        let sign = 1;
+        
+        for ( let k = 0; k < 6; k ++ ) {
+        
+            for ( let j = 0; j < cs; j ++ ) {
+            
+                for ( let i = 0; i < cs; i ++ ) {
+                
+                    // 4 faces / segment
+                    a  = offs + hvc * j + css + i;
+                    
+                    b1 = offs + hvc * j + i;                // bottom
+                    c1 = offs + hvc * ( j + 1 ) + i;
+                    
+                    b2 = offs + hvc * j + 1 + i;            // left
+                    c2 = offs + hvc * j + i;
+                    
+                    b3 = offs + hvc * ( j + 1 ) + i;        // right
+                    c3 = offs + hvc * ( j + 1 ) + 1 + i;
+                    
+                    b4 = offs + hvc * ( j + 1 ) + 1 + i;    // top
+                    c4 = offs + hvc * j + 1 + i;
+                    
+                    if ( sign === 1 ) {
+                    
+                        indices[ idx      ] = a;    // bottom
+                        indices[ idx +  1 ] = b1;
+                        indices[ idx +  2 ] = c1; 
+                        
+                        indices[ idx +  3 ] = a;    // left
+                        indices[ idx +  4 ] = b2,
+                        indices[ idx +  5 ] = c2; 
+                        
+                        indices[ idx +  6 ] = a;    // right
+                        indices[ idx +  7 ] = b3;
+                        indices[ idx +  8 ] = c3; 
+                        
+                        indices[ idx +  9 ] = a;    // top
+                        indices[ idx + 10 ] = b4,
+                        indices[ idx + 11 ] = c4
+                        
+                    }
+                    
+                    if ( sign === -1 ) {
+                    
+                        indices[ idx      ] = a;    // bottom
+                        indices[ idx +  1 ] = c1;
+                        indices[ idx +  2 ] = b1; 
+                        
+                        indices[ idx +  3 ] = a;    // left
+                        indices[ idx +  4 ] = c2,
+                        indices[ idx +  5 ] = b2; 
+                        
+                        indices[ idx +  6 ] = a;    // right
+                        indices[ idx +  7 ] = c3;
+                        indices[ idx +  8 ] = b3; 
+                        
+                        indices[ idx +  9 ] = a;    // top
+                        indices[ idx + 10 ] = c4,
+                        indices[ idx + 11 ] = b4
+                        
+                    }                    
+                    
+                    idx += 12;
+                    
+                }
+            
+            }
+            
+            g.addGroup ( startIdx,  idx - startIdx, materialIndex );
+            materialIndex ++;
+            startIdx = idx;
+            
+            offs += hvc * cs + css; // + vertex count one side
+            
+            sign = -sign;
+            
+        }
+        
+    }
+    
+    function makePositions( ia, ib, ic, sign ) {
+        
+        for ( let j = 0; j < css; j ++ ) {
+        
+            for ( let i = 0; i < css; i ++ ) {
+                
+                a0 = -ss + 2 * ss * j / cs;
+                b0 = -ss + 2 * ss * i / cs;
+                c0 = sign * ss;
+                
+                g.cube[ idx + ia ] = a0;
+                g.cube[ idx + ib ] = b0;
+                g.cube[ idx + ic ] = c0;
+                
+                le = Math.sqrt( a0 * a0 + b0 * b0 + c0 * c0 );       
+                
+                a1 = r * a0 / le;
+                b1 = r * b0 / le;
+                c1 = r * c0 / le;
+                
+                g.diff[ idx + ia ] = a1 - a0;
+                g.diff[ idx + ib ] = b1 - b0;
+                g.diff[ idx + ic ] = c1 - c0;
+                
+                g.positions[ idx + ia ] = a0; 
+                g.positions[ idx + ib ] = b0;
+                g.positions[ idx + ic ] = c0;        
+                
+                idx += 3;
+                
+            }
+            
+            if( j < cs ) {
+                
+                for ( let i = 0; i < cs; i ++ ) {
+                        
+                    a0 = -ss + 2 * ss * ( j + 0.5 ) / cs;
+                    b0 = -ss + 2 * ss * ( i + 0.5 ) / cs;
+                    c0 = sign * ss;
+                    
+                    g.cube[ idx + ia ] = a0;
+                    g.cube[ idx + ib ] = b0;
+                    g.cube[ idx + ic ] = c0;
+                    
+                    le = Math.sqrt( a0 * a0 + b0 * b0 + c0 * c0 );
+                    
+                    a1 = r * a0 / le;
+                    b1 = r * b0 / le;
+                    c1 = r * c0 / le;
+                    
+                    g.diff[ idx + ia ] = a1 - a0;
+                    g.diff[ idx + ib ] = b1 - b0;
+                    g.diff[ idx + ic ] = c1 - c0;
+                    
+                    g.positions[ idx + ia ] = a0;
+                    g.positions[ idx + ib ] = b0;
+                    g.positions[ idx + ic ] = c0;
+                    
+                    idx += 3;
+                    
+                }
+                
+            }
+            
+        }
+        
+    } 
+    
+    function makeUVs( ia, ib, o1, o2 ) {
+        
+        for ( let j = 0; j < css; j ++ ) {
+        
+            for ( let i = 0; i < css; i ++ ) {
+                
+                uvs[ idx + ia ] = o1 === 1 ? j / cs : 1 - j / cs;
+                uvs[ idx + ib ] = o2 === 1 ? i / cs : 1 - i / cs;    
+                
+                idx += 2;
+                
+            }
+            
+            if( j < cs ) {
+                
+                for ( let i = 0; i < cs; i ++ ) {
+                        
+                    uvs[ idx + ia ] = o1 === 1 ? ( j + 0.5 ) / cs : 1 - ( j + 0.5 ) / cs;
+                    uvs[ idx + ib ] = o2 === 1 ? ( i + 0.5 ) / cs : 1 - ( i + 0.5 ) / cs;
+                    
+                    idx += 2;
+                    
+                }
+                
+            }
+            
+        } 
+        
+    }
+    
+    g.morph = function morph( t ) {
+    
+        idx = 0; // reset
+                  // ia, ib, ic   ia, ib, ic : index  
+        setPositions( 0,  1,  2 );
+        setPositions( 0,  1,  2 );
+        setPositions( 1,  2,  0 );
+        setPositions( 1,  2,  0 );
+        setPositions( 2,  0,  1 );
+        setPositions( 2,  0,  1 );
+        
+        g.attributes.position.needsUpdate = true;// to change the positions of the vertices
+        
+        function setPositions( ia, ib, ic ) {
+            
+            for ( let j = 0; j < css; j ++ ) {
+            
+                for ( let i = 0; i < css; i ++ ) {
+                    
+                    g.positions[ idx + ia ] = g.cube[ idx + ia ] + v( t ) * g.diff[ idx + ia ]; 
+                    g.positions[ idx + ib ] = g.cube[ idx + ib ] + v( t ) * g.diff[ idx + ib ];
+                    g.positions[ idx + ic ] = g.cube[ idx + ic ] + v( t ) * g.diff[ idx + ic ];        
+                
+                    idx += 3;
+                    
+                }
+            
+                if( j < cs ) {
+                    
+                    for ( let i = 0; i < cs; i ++ ) {
+                        
+                        g.positions[ idx + ia ] = g.cube[ idx + ia ] + v( t ) * g.diff[ idx + ia ]; 
+                        g.positions[ idx + ib ] = g.cube[ idx + ib ] + v( t ) * g.diff[ idx + ib ];
+                        g.positions[ idx + ic ] = g.cube[ idx + ic ] + v( t ) * g.diff[ idx + ic ];        
+                    
+                        idx += 3;
+                    
+                    }
+                
+                }
+                
+            }
+            
+        }
+        
+    }
+    
+}
+
+</script>    
+</html>

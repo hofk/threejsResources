@@ -1,0 +1,163 @@
+<!DOCTYPE html> 
+<!-- https://discourse.threejs.org/t/morph-box-sphere-geometry/31986/10 -->
+<head>
+	<title> MorphBoxSphereShaderRadius </title>
+	<meta charset="utf-8" />
+	<style>
+      body { margin: 0; }
+    </style>
+</head>
+<body> </body>
+
+<script type="module">
+
+// @author hofk
+
+import * as THREE from '../jsm/three.module.135.js';
+import {OrbitControls} from '../jsm/OrbitControls.135.js';
+import Stats from '../jsm/stats.module.135.js';
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.1, 100 );
+camera.position.set( 0, 0, 7 );
+const renderer = new THREE.WebGLRenderer( { antialias: true } );
+renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setClearColor( 0xdedede, 1 );	
+const container = document.createElement( 'div' );
+document.body.appendChild( container );
+container.appendChild( renderer.domElement );
+
+const controls = new  OrbitControls( camera, renderer.domElement );
+const stats = new Stats( );
+container.appendChild( stats.dom );
+ 
+scene.add( new THREE.AxesHelper( 1.5 ) );
+
+const r = 1.5; // radius of the sphere
+const a = r * 2 / Math.sqrt( 3 ); //  size of the box, corners on sphere
+
+const g = new THREE.BoxBufferGeometry( a, a, a, 36, 36, 36 );
+ 
+const textureLoader = new THREE.TextureLoader( );
+
+const uniforms = { u_time: { value: 0.0 }, u_radius: { value: r } }
+
+const uvMap = textureLoader.load("uv_grid_opengl.jpg");
+
+const uvMaterial = new THREE.MeshBasicMaterial( {
+
+  map: uvMap,
+  wireframe: false,
+  onBeforeCompile: shader => {  
+    shader.uniforms.u_time = uniforms.u_time;
+    shader.uniforms.u_radius = uniforms.u_radius;
+    shader.vertexShader = `
+      uniform float u_time;
+      uniform float u_radius;
+      ${shader.vertexShader}
+    `.replace(
+      `#include <begin_vertex>`,
+      `#include <begin_vertex>
+        transformed /= u_radius;       
+        transformed += vec3( 0.5 * ( 1.0 + sin(  u_time  ) ) * ( normalize( transformed ) - transformed ) );
+        transformed *= u_radius;
+      `
+    );
+  },
+  
+});
+
+const uvMesh = new THREE.Mesh( g, uvMaterial );
+uvMesh.position.x = 3;
+scene.add( uvMesh );
+
+
+const basicMaterial = new THREE.MeshBasicMaterial( {
+
+  color: 0xff00ff,
+  wireframe: true,
+  side: THREE.DoubleSide,
+  onBeforeCompile: shader => {  
+    shader.uniforms.u_time = uniforms.u_time;
+    shader.uniforms.u_radius = uniforms.u_radius;
+    shader.vertexShader = `
+      uniform float u_time;
+      uniform float u_radius;
+      ${shader.vertexShader}
+    `.replace(
+      `#include <begin_vertex>`,
+      `#include <begin_vertex>
+        transformed /= u_radius;
+        transformed += vec3( 0.5 * ( 1.0 + sin(  u_time  ) ) * ( normalize( transformed ) - transformed ) );
+        transformed *= u_radius;
+      `
+    );
+  },
+  
+});
+
+const basicMesh = new THREE.Mesh( g, basicMaterial );
+scene.add( basicMesh )
+
+
+const diceMaps = [
+
+    textureLoader.load( 'dice/6.png' ),
+    textureLoader.load( 'dice/1.png' ),
+    textureLoader.load( 'dice/5.png' ),
+    textureLoader.load( 'dice/2.png' ),
+    textureLoader.load( 'dice/4.png' ),
+    textureLoader.load( 'dice/3.png' ),
+    
+]
+
+let diceMaterial = [];
+
+for ( let i = 0; i < 6; i ++ ) {
+    
+  diceMaterial.push(
+  
+  new THREE.MeshBasicMaterial( {
+
+        map: diceMaps[ i ],
+        wireframe: false,
+        onBeforeCompile: shader => {  
+            shader.uniforms.u_time = uniforms.u_time;
+            shader.uniforms.u_radius = uniforms.u_radius;
+            shader.vertexShader = `
+            uniform float u_time;
+            uniform float u_radius;
+            ${shader.vertexShader}
+            `.replace(
+            `#include <begin_vertex>`,
+            `#include <begin_vertex>
+              transformed /= u_radius;
+              transformed += vec3( 0.5 * ( 1.0 + sin(  u_time  ) ) * ( normalize( transformed ) - transformed ) );
+              transformed *= u_radius;
+            `
+            );
+        },
+        
+        })
+        
+  )  
+    
+}
+ 
+const diceMesh = new THREE.Mesh( g, diceMaterial );
+diceMesh.position.x = -3;
+scene.add( diceMesh );
+
+animate();
+
+function animate( ) {
+
+	requestAnimationFrame( animate );
+    uniforms.u_time.value += 0.02;
+	renderer.render( scene, camera );
+    
+    stats.update();
+}
+
+</script>
+</html>

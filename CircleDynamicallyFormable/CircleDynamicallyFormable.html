@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<!--  https://discourse.threejs.org/t/a-dynamically-deformable-circle/33113  --> 
+<head>
+    <title> CircleDynamicallyFormable  </title>
+    <meta charset="utf-8" />
+    <style>	
+    body {  margin: 0; }
+    </style>
+</head>
+<body>
+
+</body>
+ 
+ <script type="module">
+ 
+// @author hofk
+ 
+import * as THREE from "../jsm/three.module.135.js";
+import { OrbitControls } from "../jsm/OrbitControls.135.js";
+
+const scene = new THREE.Scene( );
+const camera = new THREE.PerspectiveCamera( 55, window.innerWidth / window.innerHeight, 0.01, 10000 );
+camera.position.set( 0.4, 0.3, 3.1 );
+const renderer = new THREE.WebGLRenderer( { antialias: true } );
+renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setClearColor( 0xdedede, 1 );	
+const container = document.createElement( 'div' );
+document.body.appendChild( container );
+container.appendChild( renderer.domElement );
+
+const controls = new OrbitControls( camera, renderer.domElement );
+
+const light = new THREE.PointLight( );
+light.position.set( -1, 2, 4);
+scene.add( light );;
+
+const material_0 = new THREE.MeshPhongMaterial( { color: 0xff00ff, side: THREE.DoubleSide, wireframe: false } );
+const material_1 = new THREE.MeshBasicMaterial( { map: new THREE.TextureLoader( ).load( 'uv_grid_opengl.jpg' ), side: THREE.DoubleSide, wireframe: true} );
+const material_2 = new THREE.MeshBasicMaterial( { map: new THREE.TextureLoader( ).load( 'rose.png' ), side: THREE.DoubleSide, wireframe: false } );
+
+// inputs
+const geometry = new THREE.BufferGeometry( );
+const radius = 0.96;
+const radiusFunction = ( r, theta, t ) => r * ( 1 + 0.03 * Math.sin( theta * 18 ) * Math.cos( t ) );  
+const heightFunction = ( n, t ) => 0.04 * ( 1 + Math.sin( Math.PI * n * 12 ) ) * Math.cos( 0.3 * t );
+const rings = 144;
+const parts = 6;
+
+CircleCustom( geometry, radius, radiusFunction, heightFunction, rings, parts );
+
+const circle_0 = new THREE.Mesh( geometry, material_0 );
+circle_0.position.x = -2;
+scene.add( circle_0 );
+
+const circle_1 = new THREE.Mesh( geometry, material_1);
+scene.add( circle_1 );
+
+const circle_2 = new THREE.Mesh( geometry, material_2 );
+circle_2.position.x = 2;
+scene.add( circle_2 );
+
+let t = 0;
+
+animate( );  
+
+function animate( ) {
+    
+    requestAnimationFrame( animate );
+    
+    t += 0.04;
+    geometry.setVertices( t );
+    
+    renderer.render( scene, camera );
+    
+}
+
+function CircleCustom( g, r, rf, hf, rings, parts ) {
+    
+    const vertexCount = 1 + parts / 2 * rings * ( rings + 1 ) ;
+    
+    let idxCount = 0;	
+    let faceCount = parts * rings * rings;
+    
+    const faceIndices = new Uint32Array( faceCount * 3 );
+    const vertices = new Float32Array( vertexCount * 3 );  
+    const uvs = new Float32Array( vertexCount * 2 );
+       
+    g.setIndex( new THREE.BufferAttribute( faceIndices, 1 ) );	
+    g.setAttribute( 'position', new THREE.BufferAttribute( vertices, 3 ).setUsage( THREE.DynamicDrawUsage) );
+    g.setAttribute( 'uv', new THREE.BufferAttribute( uvs, 2 ) );
+    
+    const setFace =  ( ) => {
+        
+        faceIndices[ idxCount     ] = a;
+        faceIndices[ idxCount + 1 ] = b;
+        faceIndices[ idxCount + 2 ] = c; 
+            
+        idxCount += 3;
+        
+    }
+    
+    let posIdx, uvIdx;
+    
+    let a = 0; // vertex 0: center
+    let b = 1;
+    let c = 2;
+    
+    for ( let j = 0; j < parts; j ++ ) { // around center
+    
+        setFace( );	
+        b ++;
+        if ( b < parts ) { c ++; } else { c = 1; }
+    
+    }
+    
+    let rvSum = 1; // only vertex 0
+    
+    for ( let i = 1; i < rings; i ++ ) {
+        
+        for ( let q = 0; q < parts; q ++ ) {
+            
+            for ( let j = 0; j < i + 1 ; j ++ ) {  
+                                
+                if ( j === 0 ) {
+                
+                    //  first face in part 
+                    
+                    a = rvSum;
+                    b = a + parts * i + q;
+                    c = b + 1;
+                    
+                    setFace();
+                    
+                } else {
+                     
+                    //  two faces / vertex
+                    
+                    a = j + rvSum; 
+                    b = a - 1; 
+                    c = a + parts * i + q;
+                    if ( q === ( parts - 1 ) && j === i ) a = a - parts * i; // connect to first vertex of circle
+                    
+                    setFace();
+                    
+                    // a  from first face 
+                    b = c; // from first face
+                    c = b + 1;
+                    
+                    if ( q === ( parts - 1 ) && j === i ) c = c - parts * ( i + 1 ); // connect to first vertex of next circle
+                    
+                    setFace();
+                    
+                }
+                
+            }
+            
+            rvSum += i;
+            
+        }
+        
+    }   
+    
+    uvs[ 0 ] = 0.5;
+    uvs[ 1 ] = 0.5;
+    
+    let u, v;
+                
+    rvSum = 1;  // without center
+    
+    for ( let i = 0; i <= rings; i ++ ) {
+    
+        const ni = i / rings;	 
+        
+        for ( let j = 0; j < i * parts; j ++ ) {
+            
+            const phi = Math.PI * 2 * j / ( i * parts );
+            
+            u = 0.5 * ( 1 + ni * Math.cos( phi ) );
+            v = 1 - 0.5 * ( 1 + ni * Math.sin( phi ) );
+            
+            uvIdx  = ( rvSum + j ) * 2;
+            
+            uvs[ uvIdx     ] = u;
+            uvs[ uvIdx + 1 ] = v;
+            
+        }
+        
+        rvSum += i * parts;
+        
+    }
+    
+    g.setVertices = ( t ) => {
+    
+        let x, y, z, posidx;
+        
+        vertices[ 0 ] = 0;
+        vertices[ 1 ] = 0;
+        vertices[ 2 ] = hf( 0, t );        
+
+        rvSum = 1; // without center
+        
+        for ( let i = 0; i <= rings; i ++ ) {
+        
+            const ni = i / rings;	 
+            
+            for ( let j = 0; j < i * parts; j ++ ) {
+                
+                const phi = Math.PI * 2 * j / ( i * parts );
+                
+                x =  rf( r, phi, t ) * Math.cos( phi ) * ni;
+                y = -rf( r, phi, t ) * Math.sin( phi ) * ni;
+                z =  hf( ni, t );
+                    
+                posIdx = ( rvSum + j ) * 3;
+                
+                vertices[ posIdx     ] = x;
+                vertices[ posIdx + 1 ] = y;
+                vertices[ posIdx + 2 ] = z;
+                
+            }
+            
+            rvSum += i * parts;
+            
+        }
+        
+        g.computeVertexNormals( ) ;
+        g.attributes.position.needsUpdate = true;
+        
+    }
+    
+    g.setVertices( );
+    
+}
+
+</script>
+</html>

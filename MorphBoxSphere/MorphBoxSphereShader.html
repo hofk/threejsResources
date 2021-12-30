@@ -44,11 +44,7 @@ const uniforms = { u_time: { value: 0.0 } }
 
 const uvMap = textureLoader.load("uv_grid_opengl.jpg");
 
-const uvMaterial = new THREE.MeshBasicMaterial( {
-
-  map: uvMap,
-  wireframe: false,
-  onBeforeCompile: shader => {  
+const sPart = shader => {  
     shader.uniforms.u_time = uniforms.u_time;   
     shader.vertexShader = `
       uniform float u_time;      
@@ -60,80 +56,33 @@ const uvMaterial = new THREE.MeshBasicMaterial( {
        transformed += vec3( 0.5 * ( 1.0 + sin(  u_time  ) ) * ( normalize( transformed ) - transformed ) );
       `
     );
-  },
-  
-});
+  }
 
+const uvMaterial = new THREE.MeshBasicMaterial( { onBeforeCompile: sPart, map: uvMap,  wireframe: false } );
 const uvMesh = new THREE.Mesh( g, uvMaterial );
 uvMesh.position.x = 4;
 uvMesh.scale.set( 2, 2, 2 );
 scene.add( uvMesh );
 
-
-const basicMaterial = new THREE.MeshBasicMaterial( {
-
-  color: 0xff00ff,
-  wireframe: true,
-  side: THREE.DoubleSide,
-  onBeforeCompile: shader => {  
-    shader.uniforms.u_time = uniforms.u_time;   
-    shader.vertexShader = `
-      uniform float u_time;      
-      ${shader.vertexShader}
-    `.replace(
-      `#include <begin_vertex>`,
-      `#include <begin_vertex>
-       
-       transformed += vec3( 0.5 * ( 1.0 + sin(  u_time  ) ) * ( normalize( transformed ) - transformed ) );
-      `
-    );
-  },
-  
-});
-
+const basicMaterial = new THREE.MeshBasicMaterial( { onBeforeCompile: sPart, color: 0xff00ff, wireframe: true, side: THREE.DoubleSide } );
 const basicMesh = new THREE.Mesh( g, basicMaterial );
 basicMesh.scale.set( 2, 2, 2 );
 scene.add( basicMesh )
 
-
 const diceMaps = [
-
     textureLoader.load( 'dice/6.png' ),
     textureLoader.load( 'dice/1.png' ),
     textureLoader.load( 'dice/5.png' ),
     textureLoader.load( 'dice/2.png' ),
     textureLoader.load( 'dice/4.png' ),
-    textureLoader.load( 'dice/3.png' ),
-    
+    textureLoader.load( 'dice/3.png' ),   
 ]
 
 let diceMaterial = [];
 
 for ( let i = 0; i < 6; i ++ ) {
     
-  diceMaterial.push(
-  
-  new THREE.MeshBasicMaterial( {
-
-        map: diceMaps[ i ],
-        wireframe: false,
-        onBeforeCompile: shader => {  
-            shader.uniforms.u_time = uniforms.u_time;   
-            shader.vertexShader = `
-            uniform float u_time;      
-            ${shader.vertexShader}
-            `.replace(
-            `#include <begin_vertex>`,
-            `#include <begin_vertex>
-            
-            transformed += vec3( 0.5 * ( 1.0 + sin(  u_time  ) ) * ( normalize( transformed ) - transformed ) );
-            `
-            );
-        },
-        
-        })
-        
-  )  
+  diceMaterial.push( new THREE.MeshBasicMaterial( { onBeforeCompile: sPart, map: diceMaps[ i ], wireframe: false } ) );
     
 }
  

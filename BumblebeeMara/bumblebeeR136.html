@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<!--  -->
+<head> <meta charset="utf-8">
+    <title> Mara </title>
+</head>
+<body> 
+    <div style="position: absolute; top: 20px; left: 25px; text-align:left;">
+    <div >  Bumblebee / Hummel  Mara </br>
+        <label><input type="checkbox" id="move" > move / bewege </label>
+         
+    </div>
+</body>
+
+<script type ="module">
+
+// @author hofk
+
+import * as THREE from '../jsm/three.module.136.js';
+import { mergeBufferGeometries } from '../jsm/BufferGeometryUtils.136.js'
+import {OrbitControls} from '../jsm/OrbitControls.136.js';
+
+window.addEventListener( 'resize', function ( ) {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    renderer.setSize( window.innerWidth, window.innerHeight ); }, false 
+);
+ 
+const scene = new THREE.Scene( );
+const camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.1, 20000 );
+camera.position.set( -400, 200, 400 );
+const renderer = new THREE.WebGLRenderer( { antialias: true } );
+renderer.setPixelRatio( window.devicePixelRatio );
+renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setClearColor( 0xbbffcc, 1 );
+const container = document.createElement('div');
+document.body.appendChild(container);
+container.appendChild(renderer.domElement); 
+new OrbitControls( camera, renderer.domElement );
+const light1 = new THREE.PointLight(0xffffff,1,0); 
+const light2 = light1.clone(); 
+light1.position.set( -100, 300, 1000 ); 
+light2.position.set(    0, 800, -500 );
+scene.add(light1);
+scene.add(light2);
+const clock  = new THREE.Clock( true );
+
+let pos; // positions for deformation
+const v3 = new THREE.Vector3( ); // for reuse
+
+const rSegmentCount = 36;
+
+const geometryNeck = new THREE.OctahedronGeometry( 10, 2 );
+
+const outlineHead = [
+ [8,5],[18,6],[25,7],[30,8],[35,10],[40,12.5],[45,15],[50,19],[54,25],[57,30],[59,35],[60,40],[61,45],[62,55],[61,65],[59,75],[57,80],[54,85],[50,90],[44,95],[40,97.5],[35,100],[29,101.5],[20,103],[10,104],[0.01,104.5]
+];
+const pointsHead = [];
+
+for ( var i = 0; i < outlineHead.length ; i++ ) {
+
+   pointsHead.push( new THREE.Vector2( outlineHead[ i ][ 0 ], outlineHead[ i ] [ 1 ]) );
+   
+}
+
+const geometryHead = new THREE.LatheGeometry( pointsHead, rSegmentCount );
+
+let rSeg, hSeg;
+rSeg = 32; 
+hSeg = 24;
+
+const pointsHat = [];
+
+for( let i = 0; i < hSeg; i ++ ) {
+    
+    pointsHat.push( new THREE.Vector2( i * 3.7, 30 * Math.cos( i / 6  - 0.4 ) - 11 ) );
+    
+}
+
+const geometryHat = new THREE.LatheGeometry( pointsHat, rSeg );
+ 
+const rEye = 8;
+rSeg = 24;
+const geometryEye  = new THREE.SphereGeometry( rEye, rSeg, rSeg);
+const geometryPupil = new THREE.SphereGeometry(  0.5 * rEye, rSeg, rSeg );
+
+const geometryNose = new THREE.OctahedronGeometry( 4, 2 );
+
+const rMouth = 2.5, hMouth = 25;
+const R = 16; // bend radius 
+const T = 0.2; // twist 
+ 
+const geometryMouth  = new THREE.CylinderGeometry( rMouth, rMouth, T * Math.PI * 2, rSeg, hSeg, true );
+const position = geometryMouth .attributes.position;
+geometryMouth.translate( R, T * Math.PI, 0 );
+const v = new THREE.Vector3( );
+
+for( let i = 0 ; i < position.count; i++ ) {
+    
+    v.fromBufferAttribute( position, i );
+    position.setXYZ( i,  Math.cos( v.y ) * v.x,  Math.sin( v.y ) * v.x,  v.z );
+    
+}
+
+geometryMouth.computeVertexNormals( );
+
+const bodyHeight            = 80;
+const boneBodyCount         =  4;
+const boneBodySegCount      =  4;
+const bodySegHeightCount    = boneBodySegCount * boneBodyCount; 
+const boneBodyHeight        = bodyHeight / boneBodyCount;
+
+const outlineBody = [
+[0.01,-bodyHeight ],[10,-79.75],[20,-79.25],[30,-76],[35,-75],[40,-70],[42,-65],[44,-60],[45,-55],[45,-50],[44,-45],[41,-35],[36,-27],[31,-20],[17.5,-10],[10,0]  //  -bodyHeight  -->  0
+];
+
+const pointsBody = [];
+
+for ( let i = 0; i < outlineBody.length ; i++ ) {
+
+   pointsBody.push(new THREE.Vector2( outlineBody[ i ][ 0 ], outlineBody[ i ][ 1 ] ) );
+   
+}
+
+const geometryBody = new THREE.LatheGeometry( pointsBody, rSegmentCount );
+
+const skinIndicesBody = [];
+const skinWeightsBody = [];
+
+const positionBody = geometryBody.attributes.position;
+v3.fromBufferAttribute( positionBody, 274 );
+positionBody.setXYZ( 274, 0, v3.y - 14, v3.z - 10 );
+    
+for ( let i = 0; i < positionBody.count; i ++ ) {
+
+    v3.fromBufferAttribute( positionBody, i );
+    
+    const skinIndex = boneBodyCount - 1 - Math.floor( ( i % bodySegHeightCount) / boneBodySegCount );
+    const skinWeight = ( ( bodyHeight - v3.y ) % boneBodyHeight ) / boneBodyHeight;
+    
+    skinIndicesBody.push(    skinIndex, skinIndex + 1, 0, 0 ); 
+    skinWeightsBody.push( 1 - skinWeight, skinWeight , 0, 0 );
+    
+}
+
+geometryBody.setAttribute( 'skinIndex', new THREE.Uint16BufferAttribute( skinIndicesBody, 4 ) );
+geometryBody.setAttribute( 'skinWeight', new THREE.Float32BufferAttribute( skinWeightsBody, 4 ) );
+
+const wSx = 0, wSy = 0;
+const wingsShape = new THREE.Shape();
+wingsShape.moveTo( wSx + 5, wSy +16 );
+wingsShape.bezierCurveTo( wSx + 5, wSy + 5, wSx + 4, wSy,           wSx,      wSy      );
+wingsShape.bezierCurveTo( wSx - 6, wSy, wSx - 6, wSy + 7,           wSx - 6,  wSy + 7  );
+wingsShape.bezierCurveTo( wSx - 6, wSy + 11, wSx - 3, wSy + 15.4,   wSx + 5,  wSy + 25 );
+wingsShape.bezierCurveTo( wSx + 12, wSy + 15.4, wSx + 16, wSy + 11, wSx + 16, wSy + 7  );
+wingsShape.bezierCurveTo( wSx + 16, wSy + 7, wSx + 16, wSy,         wSx + 10, wSy      );
+wingsShape.bezierCurveTo( wSx + 7, wSy, wSx + 5, wSy + 5,           wSx +  5, wSy + 16 );
+const geometryWings = new THREE.ShapeGeometry( wingsShape );
+
+const materialHead = new THREE.MeshPhongMaterial( { color: 0x997711, emissive: 0xaa6600 } );
+const materialHat  = new THREE.MeshPhongMaterial( { color: 0xff55ff, emissive: 0xeff66ff, side: THREE.DoubleSide,flatShading: true, 
+                                                     transparent: true, opacity: 0.85 } );
+const materialHair = new THREE.MeshPhongMaterial( { color: 0x222205, emissive: 0x182003 } );
+const materialEye  = new THREE.MeshPhongMaterial( { color: 0xffffff, emissive: 0xeeeeee } );
+const materialPupil= new THREE.MeshPhongMaterial( { color: 0x000033, emissive: 0x000055 } );
+const materialBody = new THREE.MeshBasicMaterial( { map: new THREE.TextureLoader( ).load( "fur.png" ) } );
+const materialWings= new THREE.MeshPhongMaterial( { color: 0xddffff, emmissive: 0xddeeff, side: THREE.DoubleSide,  transparent: true, opacity: 0.7 } );
+const materialLimb = new THREE.MeshPhongMaterial( { color: 0x896215, emissive: 0xa96415 } );
+
+const meshHead = new THREE.Mesh( geometryHead, materialHead );
+const meshHat  = new THREE.Mesh( geometryHat,materialHat );
+      meshHead.add( meshHat );
+      meshHat.position.set( 10, 114, -10 );
+      meshHat.rotation.x = -0.2;
+      meshHat.rotation.z = -0.2;
+const meshEyeRight = new THREE.Mesh( geometryEye, materialEye );
+      meshHead.add(meshEyeRight);
+      meshEyeRight.rotation.set ( 1.57, 0, 0.2  );
+      meshEyeRight.position.set(-15, 55, 55 );
+const meshPupilRight = new THREE.Mesh( geometryPupil, materialPupil);
+      meshPupilRight.position.set( 0.1 * rEye, 0.65 * rEye, 0.05 * rEye );
+      meshEyeRight.add(meshPupilRight);
+const meshEyeLeft = new THREE.Mesh( geometryEye, materialEye );
+      meshHead.add(meshEyeLeft);
+      meshEyeLeft.rotation.x = 1.57;
+      meshEyeLeft.rotation.z = -0.2;
+      meshEyeLeft.position.set( 15, 55, 55 );
+const meshPupilLeft = new THREE.Mesh( geometryPupil, materialPupil);
+      meshPupilLeft.position.set( 0.1 * rEye, 0.65 * rEye, 0.05 * rEye );
+      meshEyeLeft.add(meshPupilLeft);
+const meshNose = new THREE.Mesh(  geometryNose , materialHead ); 
+      meshHead.add(meshNose);
+      meshNose.position.set( 0, 42, 61);
+const meshMouth = new THREE.Mesh( geometryMouth, materialHat );
+      meshHead.add(meshMouth);
+      meshMouth.position.set( 0, 40, 51.7 );
+      meshMouth.rotation.z = -Math.PI * 0.7;
+const meshNeck  = new THREE.Mesh( geometryNeck, materialHead );
+const meshBody  = new THREE.SkinnedMesh( geometryBody, materialBody );
+const meshWings = new THREE.Mesh( geometryWings, materialWings );
+
+meshNeck.add( meshWings );
+meshWings.position.set( -10, -23, -90);
+meshWings.rotation.x = 1.3;
+meshWings.scale.set( 2.5, 4, 0);
+meshBody.add( meshNeck );
+meshNeck.add( meshHead );
+ 
+const limbRadius         =  4;
+const limbHeight         = 60;
+const boneLimbCount      =  3;
+const boneLimbSegCount   =  3;
+const limbRadSegCount    =  0.5 * rSegmentCount;
+const limbHeightSegCount =  boneLimbSegCount * boneLimbCount;
+const boneLimbHeight     = limbHeight / boneLimbCount;
+const limbHalfHeight     = limbHeight * 0.5; 
+const openEnded          = false;
+ 
+const cylinderGeometry = new THREE.CylinderGeometry( limbRadius, limbRadius, limbHeight, limbRadSegCount, limbHeightSegCount, openEnded );
+const cylPosCount = cylinderGeometry.attributes.position.count;
+
+const radiusSph = 1.6 * limbRadius;
+const halfSphereGeometry = new THREE.SphereBufferGeometry( radiusSph, 16, 16 );
+const posSphere = halfSphereGeometry.attributes.position;
+
+
+for( let i = 0; i < posSphere.count; i++ ){ // change shape to hemisphere with hollowing
+
+    v3.fromBufferAttribute( posSphere, i );
+    
+    posSphere.setY( i, v3.y < 0.0 ? v3.y : ( v3.y < 0.66 * radiusSph ? 0 : 0.4 * radiusSph - v3.y ) );
+    
+}
+
+const halfSphereGeometryHand = halfSphereGeometry.clone( );
+halfSphereGeometryHand.rotateX( Math.PI / 2); 
+
+halfSphereGeometry.translate( 0, 1.1 * limbHeight / 2, 0 ); 
+halfSphereGeometryHand.translate( 0, limbHeight / 2, 0 ); 
+
+const geometrysLimbs = [];
+const meshesLimbs = [];
+
+geometrysLimbs.push( mergeBufferGeometries( [ cylinderGeometry, halfSphereGeometryHand ] ) );
+geometrysLimbs.push( mergeBufferGeometries( [ cylinderGeometry, halfSphereGeometryHand ] ) );
+geometrysLimbs.push( mergeBufferGeometries( [ cylinderGeometry, halfSphereGeometry ] ) );
+geometrysLimbs.push( mergeBufferGeometries( [ cylinderGeometry, halfSphereGeometry ] ) );
+
+meshesLimbs[ 0 ] = createMeshesLimbs( geometrysLimbs[ 0 ] );
+meshesLimbs[ 1 ] = createMeshesLimbs( geometrysLimbs[ 1 ] );
+meshesLimbs[ 2 ] = createMeshesLimbs( geometrysLimbs[ 2 ] );
+meshesLimbs[ 3 ] = createMeshesLimbs( geometrysLimbs[ 3 ] );
+
+const bonesBody = createBones( 0 ,-boneBodyHeight, boneBodyCount );
+ 
+const bonesLimbs = [];
+
+for ( let i = 0; i < boneLimbCount + 1; i ++ ) {
+
+  bonesLimbs[ i ] = createBones( -limbHalfHeight, boneLimbHeight, boneLimbCount );
+  
+}
+ 
+meshesLimbs[0].rotation.z =  1.57;  
+meshesLimbs[0].position.x = -limbHalfHeight;
+meshesLimbs[1].rotation.z =  -1.57;   
+meshesLimbs[1].position.x =  limbHalfHeight;
+meshesLimbs[2].position.x = -limbHeight*0.3; 
+meshesLimbs[2].position.y = -bodyHeight-limbHeight*0.4;
+meshesLimbs[2].rotation.z = -3.3; 
+meshesLimbs[3].position.x =  limbHeight*0.3;
+meshesLimbs[3].position.y = -bodyHeight-limbHeight*0.4;
+meshesLimbs[3].rotation.z =  3.3;
+
+const skeletonBody = new THREE.Skeleton( bonesBody );
+meshBody.add( bonesBody[ 0 ] );
+meshBody.bind( skeletonBody );
+scene.add( meshBody );
+const skeletonHelperBody = new THREE.SkeletonHelper( meshBody );
+scene.add( skeletonHelperBody );
+
+const skeletonsLimbs = [];
+const skeletonHelperLimbs = [];
+
+for ( let i = 0; i < 4; i ++ ) {
+
+    skeletonsLimbs[ i ] = new THREE.Skeleton( bonesLimbs[ i ] );
+    meshesLimbs[ i ].add( bonesLimbs[ i ][ 0 ] );
+    meshesLimbs[ i ].bind( skeletonsLimbs[ i ] );
+    meshBody.add( meshesLimbs[ i ] );
+    skeletonHelperLimbs[ i ] = new THREE.SkeletonHelper( meshesLimbs[ i ] );
+    scene.add( skeletonHelperLimbs[ i ] );
+    
+}
+
+let time;
+
+animate();
+
+//............................................................................
+
+function animate() {
+    
+    requestAnimationFrame( animate );
+    
+     time =  clock.getElapsedTime();
+    
+    if ( document.getElementById( "move" ).checked) {
+    
+        for ( var i = 1; i < meshBody.skeleton.bones.length; i ++ ) { 
+        
+            meshBody.skeleton.bones[ i ].rotation.z = 0.15 * Math.sin( 1.8 * time ) / meshBody.skeleton.bones.length;
+            
+        }
+        
+        for ( var i = 0; i < boneLimbCount + 1; i ++ ) {
+        
+            meshesLimbs[0].skeleton.bones[ i ].rotation.x = 0.3 * Math.cos( 1.2 * time ) / boneLimbCount;    
+            meshesLimbs[0].skeleton.bones[ i ].rotation.z = 0.3 * Math.sin( 1.2 * time ) / boneLimbCount;
+            meshesLimbs[1].skeleton.bones[ i ].rotation.x = 0.3 * Math.cos( 1.2 * time ) / boneLimbCount;    
+            meshesLimbs[1].skeleton.bones[ i ].rotation.z = 0.3 * Math.sin( 3.14 + 1.2 * time ) / boneLimbCount;
+            meshesLimbs[2].skeleton.bones[ i ].rotation.x = -0.1 - 0.6 * ( 1 + Math.sin( 1.2 * time ) ) / boneLimbCount;
+            meshesLimbs[3].skeleton.bones[ i ].rotation.x = -0.1 - 0.6 * ( 1 + Math.sin( 1.2 * time ) ) / boneLimbCount;
+        
+        }
+        
+        meshNeck.rotation.x = -0.20 * ( 0.8 + Math.sin( -1.57 + 1.2 * time ) );
+        meshNeck.rotation.y = -0.15 * ( 0.6 + Math.sin( -1.57 + 1.9 * time ) );
+        meshWings.rotation.x = 1.3 - 0.05 * ( 0.8 + Math.sin( -1.57 + 1.2 * time ) );
+        meshWings.position.y = -23 - 1.5 *( 0.8 + Math.sin( -1.57 + 1.2 * time ) );
+        
+    } 
+    
+    renderer.render( scene, camera );
+}
+
+function createBones( positionY, height, boneCount ) {
+
+    const bones = [];                  
+    const basicBone = new THREE.Bone(); 
+    bones.push( basicBone );   
+    basicBone.position.y = positionY; 
+    let prevBone = basicBone;
+    
+    for ( let i = 1; i < boneCount+1; i ++ ) { 
+        
+        const bone = prevBone.clone();
+        bone.position.y = height;
+        bones.push( bone );
+        prevBone.add( bone );
+        prevBone = bone;
+        
+    }
+    
+    return bones;
+    
+}
+
+function createMeshesLimbs( geometry ){ 
+    
+    const skinIndices = [];
+    const skinWeights = [];
+ 
+    const position = geometry.attributes.position;
+    
+    for ( let i = 0; i < position.count; i ++ ) {
+        
+        v3.fromBufferAttribute( position, i );
+        
+        const y = ( v3.y + limbHeight / 2 ); 
+        
+        const skinIndex = Math.floor( y / boneLimbHeight );
+        const  skinWeight = ( y % boneLimbHeight ) / boneLimbHeight
+        
+        if ( i < cylPosCount ) {
+        
+            skinIndices.push( skinIndex, skinIndex + 1, 0, 0 );
+            skinWeights.push( 1 - skinWeight, skinWeight, 0, 0 );
+            
+        } else {
+            
+            skinIndices.push( skinIndex, skinIndex + 1, 0, 0 );
+            skinWeights.push( 1.0, 0, 0, 0 );
+            
+        }
+    }
+    
+    geometry.setAttribute( 'skinIndex',  new THREE.Uint16BufferAttribute( skinIndices, 4 ) );
+    geometry.setAttribute( 'skinWeight', new THREE.Float32BufferAttribute( skinWeights, 4 ) );
+    
+    return new THREE.SkinnedMesh( geometry, materialLimb );
+    
+}    
+
+</script>
+</html>

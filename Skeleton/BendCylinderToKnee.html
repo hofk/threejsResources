@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/skinned-mesh-with-dynamic-knees/34947 -->
+ <!-- see also https://discourse.threejs.org/t/bend-cylinder-on-specific-path/23295/3 -->
+ 
+<head>
+  <title> BendCylinderToKnee </title>
+  <meta charset="utf-8" />
+  <style>
+	body{
+	margin: 0;
+	}  
+  </style>
+</head>
+
+<body></body>
+
+<script type="module">
+
+// @author hofk
+
+import * as THREE from '../jsm/three.module.137.js';
+import { OrbitControls } from '../jsm/OrbitControls.137.js';
+
+const camera = new THREE.PerspectiveCamera( 65, window.innerWidth / window.innerHeight, 0.001, 10000 );
+camera.position.set( 0, 10, 4 );
+const scene = new THREE.Scene( );
+const light = new THREE.PointLight( );
+light.position.set( 15, 25, 40 );
+scene.add( light );
+const renderer = new THREE.WebGLRenderer( { antialias: true} );
+renderer.setClearColor( 0xdedede, 1 );
+renderer.setSize (window.innerWidth, window.innerHeight );
+document.body.appendChild( renderer.domElement );
+const controls = new OrbitControls( camera, renderer.domElement );
+
+const light1 = new THREE.PointLight( 0xffffff, 1, 0 ); 
+const light2 = light1.clone();
+light1.position.set( -1, 3, 2 );
+light2.position.set(  0, 2, -1.5 );
+scene.add( light1 );
+scene.add(light2);
+
+const plane = new THREE.GridHelper( 10, 10 );
+scene.add( plane );
+
+// inputs
+const radius = 1.75; // radius Cylinder ( top, bottom,  = height )
+const radialSegments = 32;
+const heightSegments = 16;
+
+const kneeGeometry = new THREE.CylinderGeometry( radius, radius, radius, radialSegments, heightSegments, true );
+kneeGeometry.posOriginal = kneeGeometry.attributes.position.clone( );
+
+const material = new THREE.MeshPhongMaterial(
+    { color: 0x896215, emissive: 0xa96415, side: THREE.DoubleSide, transparent:true, opacity: 0.6, wireframe: true } );
+    
+const mesh = new THREE.Mesh( kneeGeometry, material );
+scene.add( mesh );
+
+let twist = 0;  // 0.25 like  Pi/2 ,90°
+let phi = 0;    // rotation y
+let time = 0;
+ 
+animate( );
+
+function animate( ) {
+
+  requestAnimationFrame( animate );
+  
+  time += 0.01;
+
+  twist = ( 1 + Math.sin( time ) ) / 8;
+  phi = ( 1 - Math.cos( time ) ) * 2;
+    
+  bendKnee( kneeGeometry, twist, phi );
+  
+  renderer.render( scene, camera );
+  
+}
+ 
+function bendKnee( g, twist, phi ) { 
+    
+    const v = new THREE.Vector3( );
+    const r = g.parameters.radiusTop; 
+    let x1, x2, x3, y1, y2, z1;
+    
+    for( let i = 0 ; i < g.posOriginal.count; i++ ) {
+        
+        v.fromBufferAttribute( g.posOriginal, i );
+        
+        x1 = r + v.x; // shift
+        
+        // bend
+        y1 = twist * Math.PI * ( 1 + 2 / r * v.y );
+        
+        x2 = Math.cos( y1 ) * x1;
+        y2 = Math.sin( y1 ) * x1;
+        
+        x2 -= r; // shift back
+        y2 -= Math.tan( twist * Math.PI ) * r; // shift down
+        
+        // rotate 
+        x3 =  Math.cos( phi ) * x2 - Math.sin( phi ) * v.z;
+        z1 = -Math.sin( phi ) * x2 - Math.cos( phi ) * v.z;
+        
+        g.attributes.position.setXYZ( i, x3, y2, z1 );
+        
+    }
+    
+    g.computeVertexNormals( );
+    
+    g.attributes.position.needsUpdate = true;
+    
+}
+
+</script>
+</html>

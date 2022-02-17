@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/skinned-mesh-with-dynamic-knees/34947 -->
+<head>
+    <meta charset="utf-8">
+    <title> CustomCylinderAndSphereKnee </title>
+    <style>	
+	body { 
+    margin: 0;
+    overflow: hidden;
+    }
+	</style>
+</head>
+<body>
+<div>
+     <input type="checkbox" id="wiref" > wireframe  
+     <input type="checkbox" id="texture" > texture
+</div>
+   
+</body> 
+
+<script type="module">
+
+import * as THREE from '../jsm/three.module.137.js';
+import { OrbitControls } from '../jsm/OrbitControls.137.js';
+ 
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera( 65, window.innerWidth / window.innerHeight, 0.001, 1000 );
+camera.position.set( 1, 3, 8 );
+const renderer = new THREE.WebGLRenderer( { antialias: true } );
+renderer.setPixelRatio( window.devicePixelRatio );
+renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setClearColor( 0xdedede, 1 );
+document.body.appendChild( renderer.domElement );
+new OrbitControls( camera, renderer.domElement );
+scene.add( new THREE.AxesHelper( 2 ) );
+
+const light1 = new THREE.PointLight( 0xffffff, 1, 0 ); 
+const light2 = light1.clone();
+light1.position.set( -1, 3, 2 );
+light2.position.set(  0, 2, -1.5 );
+scene.add( light1 );
+scene.add(light2);
+
+const loader = new THREE.TextureLoader( );
+
+const texture = loader.load( 'uv_grid_opengl.jpg' ); // https://threejs.org/examples/textures/uv_grid_opengl.jpg
+const textureMaterial = new THREE.MeshBasicMaterial( { map: texture, side: THREE.DoubleSide, transparent: false, opacity: 0.95, wireframe: false } );
+
+const material = new THREE.MeshPhongMaterial( 
+        { color: 0x896215, emissive: 0xa96415, side: THREE.DoubleSide, transparent: false, opacity: 0.6, wireframe: false } );
+ 
+// inputs
+const radius = 0.25;
+const radialSegments = 72;
+const sectionHeight = 1.4;
+const sections = 4;
+const segmentsSection = 12;
+
+const height = sectionHeight * sections;
+
+const bones = [];
+let prevBone = new THREE.Bone(); 
+bones.push( prevBone );
+prevBone.position.y = 0;
+
+for ( let i = 1; i <= sections; i ++ ) { //  from 1:  no geometry to basis bone 
+
+    const bone = new THREE.Bone();
+    bone.position.y = sectionHeight;
+    bones.push( bone );
+    prevBone.add( bone );
+    prevBone = bone;
+
+}
+
+const limbGeometries = [];
+
+limbGeometries.push( null ); // no geometry to basis bone 
+
+for( let i = 1; i <= sections; i ++ ) {
+                                      // radius, bottom,                           height, radialSegments, heightSegments , pressX
+    limbGeometries.push( CustomGeometry( radius, ( i - 1 ) * sectionHeight, sectionHeight, radialSegments, segmentsSection, 0.4 ) );
+    
+}
+
+const limbGeometrie = link( limbGeometries );
+
+const skinIndices = [];
+const skinWeights = [];
+
+for ( let i = 1; i < limbGeometries.length; i ++ ) { //  from 1:  no geometry to basis bone
+    
+    for ( let j = 0; j < limbGeometries[ i ].attributes.position.count; j ++ ) {
+        
+        const skinIndex = i - 1;
+        const skinWeight = 1;
+        
+        skinIndices.push( skinIndex, 0, 0, 0 );
+        skinWeights.push( skinWeight, 0, 0, 0 );
+        
+    }
+    
+}
+
+limbGeometrie.setAttribute( 'skinIndex',  new THREE.Uint16BufferAttribute( skinIndices, 4 ) );
+limbGeometrie.setAttribute( 'skinWeight', new THREE.Float32BufferAttribute( skinWeights, 4 ) );
+
+const mesh = new THREE.SkinnedMesh( limbGeometrie, material );
+const skeleton = new THREE.Skeleton( bones );
+mesh.add( bones[ 0 ] );
+mesh.bind( skeleton );
+scene.add( mesh );
+
+// .............. sphere knees ......................
+
+const kneeGeometries = [];
+
+kneeGeometries.push( null ); // no geometry to basis bone 
+
+for( let i = 1; i <= sections; i ++ ) {
+
+    const sphereGeo = new THREE.SphereGeometry( radius, radialSegments, radialSegments );
+    sphereGeo.translate( 0, i * sectionHeight , 0 );
+    kneeGeometries.push( sphereGeo );
+    
+}
+                                        // visible
+const kneeGeometry = link( kneeGeometries, true );
+ 
+const skinIndicesKnee = [];
+const skinWeightsKnee = [];
+
+for ( let i = 1; i < kneeGeometries.length; i ++ ) { //  from 1:  no geometry to basis bone
+    
+    for ( let j = 0; j < kneeGeometries[ i ].attributes.position.count; j ++ ) {
+    
+        const skinIndex = i - 1;
+        const skinWeight = 1; 
+        
+        skinIndicesKnee.push( skinIndex, 0, 0, 0 );
+        skinWeightsKnee.push( skinWeight, 0, 0, 0 );
+        
+    }
+}
+
+kneeGeometry.setAttribute( 'skinIndex',  new THREE.Uint16BufferAttribute( skinIndicesKnee, 4 ) );
+kneeGeometry.setAttribute( 'skinWeight', new THREE.Float32BufferAttribute( skinWeightsKnee, 4 ) );
+
+const meshKnee = new THREE.SkinnedMesh( kneeGeometry, material );
+
+meshKnee.bind( skeleton );
+scene.add( meshKnee );
+
+scene.add( new THREE.SkeletonHelper( mesh ) );
+
+let time;
+const pi = Math.PI;
+
+bones[ 1 ].rotation.x =  pi / 3; //   bone to next
+bones[ 1 ].rotation.z = -pi / 3;
+
+bones[ 2 ].rotation.x = pi / 2;
+bones[ 2 ].rotation.z = pi / 2;
+
+bones[ 3 ].rotation.x = -pi / 2;
+
+animate( );
+
+function animate( ) {
+
+    requestAnimationFrame( animate );
+    
+    processCheck( );
+    
+    time = Date.now( ) * 0.001;
+    
+    bones[ 0 ].rotation.y = time / 4;
+    bones[ 3 ].rotation.z = time;
+    
+    renderer.render( scene, camera );
+
+}
+
+function CustomGeometry( radius, bottom, height, radialSegments, heightSegments, pressX, pressZ, uvMode ) {
+     
+    const prX = pressX !== undefined ? pressX : 1;  //  optional
+    const prZ = pressZ !== undefined ? pressZ : 1;
+    const uvMd = uvMode !== undefined ? 1 : 0;
+    
+    const g = new THREE.BufferGeometry( );
+    
+    const r = radius;
+    const b = bottom;
+    const h = height;
+    const rs = radialSegments;
+    const hs = heightSegments % 2 === 1 ? heightSegments + 1 : heightSegments; // has to be even
+
+    const rss = rs + 1;
+    const hss = hs + 1;
+    
+    const faceCount = rs * hs * 2;
+    const positionCount = rss * hss;
+    
+    const indices = new Uint32Array( faceCount * 3 );
+    const positions = new Float32Array( positionCount * 3 );  
+    const uvs = new Float32Array( positionCount * 2 );
+    
+    g.setIndex( new THREE.BufferAttribute( indices, 1 ) );	
+    g.setAttribute( 'position', new THREE.BufferAttribute( positions, 3 ) );
+    g.setAttribute( 'uv', new THREE.BufferAttribute( uvs, 2 ) );
+    
+    let idxCount = 0;
+    
+    let a, b1, b2, c1, c2;
+    
+    for ( let i = 0; i < hs; i ++ ) {
+    
+        for ( let j = 0; j < rs; j ++ ) {
+
+            // 2 faces / segment,  3 vertex indices
+            a =  rss * i + j;
+            b1 = rss * ( i + 1 ) + j;		// right-bottom
+            c1 = rss * ( i + 1 ) + 1 + j;
+            //b2 = rss * ( i + 1 ) + 1 + j;	// left-top
+            c2 = rss * i + 1 + j;
+            
+            indices[ idxCount     ] = a; // right-bottom
+            indices[ idxCount + 1 ] = c1;
+            indices[ idxCount + 2 ] = b1; 
+            
+            indices[ idxCount + 3 ] = a; // left-top
+            indices[ idxCount + 4 ] = c2;
+            indices[ idxCount + 5 ] = c1; // = b2
+            
+            idxCount += 6;
+            
+        }
+            
+    }
+    
+    let x, y, z;
+    let vIdx = 0;   // vertex index
+    let posIdx;     // position  index
+    
+    idxCount = 0;
+    let u, v;
+    
+    for ( let i = 0; i < hss; i ++ ) {
+        
+        v = uvMd === 0 ?  i / hs : 1 - i / hs;
+           
+        for ( let j = 0; j < rss; j ++ ) {
+            
+            u = j / rs;
+            
+            uvs[ idxCount     ] = u;
+            uvs[ idxCount + 1 ] = v;
+            
+            idxCount += 2; 
+           
+        }
+        
+    }
+    
+    vIdx = 0;
+            
+    for ( let i = 0; i < hss; i ++ ) { // height
+    
+        for ( let j = 0; j < rss; j ++ ) { // radial 
+            
+            x = prX * r * Math.cos( Math.PI * 2  * j / rs );
+            y = b + h * i / hs ;
+            z = - prZ * r * Math.sin( Math.PI * 2  * j / rs );
+            
+            posIdx = vIdx * 3;
+            
+            positions[ posIdx ]  = x  ;
+            positions[ posIdx + 1 ]  = y;
+            positions[ posIdx + 2 ]  = z;
+            
+            vIdx ++;
+            
+        }
+        
+    }
+    
+    return g;
+    
+}
+
+function link( geometries, visible ) {
+
+    const visib = visible === undefined ? true:  visible === false ? false : true;
+
+    const g = new THREE.BufferGeometry( );
+    
+    const faceCounts = [];
+    const positionCounts = [];
+    let faceCount = 0;
+    let positionCount = 0;
+    
+    g.positionOffsets = [];
+    g.positionOffsets[ 0 ] = 0; 
+    
+    for ( let i = 1; i < geometries.length; i ++ ) {  // from 1: no geometry to basis bone 
+        
+        faceCounts[ i ] = geometries[ i ].index.array.length / 3;
+        faceCount += faceCounts[ i ];
+        
+        positionCounts[ i ] = geometries[ i ].attributes.position.count;
+        positionCount += positionCounts[ i ];
+        
+        g.positionOffsets.push( positionCount ); // to have globally the beginning of the sub geometries
+        
+    }
+    
+    const indices = new Uint32Array( faceCount * 3 );
+    const positions = new Float32Array( positionCount * 3 );  
+    const uvs = new Float32Array( positionCount * 2 );
+    
+    g.setIndex( new THREE.BufferAttribute( indices, 1 ) );	
+    g.setAttribute( 'position', new THREE.BufferAttribute( positions, 3 ) );
+    g.setAttribute( 'uv', new THREE.BufferAttribute( uvs, 2 ) );
+     
+    let indOffs = 0;
+    let indVal  = 0;
+    let posOffs = 0;
+    let uvsOffs = 0;
+    
+    for ( let i = 1; i < geometries.length; i ++ ) { // from 1: no geometry to basis bone 
+        
+        for ( let j = 0; j < geometries[ i ].index.array.length; j ++ ) {
+            
+           indices[ j + indOffs ] = indVal + geometries[ i ].index.array[ j ] ;
+            
+        }
+        
+        for ( let j = 0; j < geometries[ i ].attributes.position.count * 3; j ++ ) {
+            
+            positions[ j + posOffs ] = geometries[ i ].attributes.position.array[ j ];
+
+        }
+        
+        for ( let j = 0; j < geometries[ i ].attributes.uv.count * 2;  j ++ ) {
+            
+            uvs[ j + uvsOffs ] = geometries[ i ].attributes.uv.array[ j ];
+            
+        }
+     
+        g.addGroup( indOffs, faceCounts[ i ] * 3, i ); // MultiMaterialGroups
+        
+        indOffs += faceCounts[ i ] * 3;
+        indVal  += positionCounts[ i ];
+        posOffs += positionCounts[ i ] * 3;
+        uvsOffs += positionCounts[ i ] * 2;
+        
+    }
+    
+    g.posOriginal = g.attributes.position.clone( ); // can be used with  g.positionOffsets
+    
+    if ( visib ) g.computeVertexNormals( );
+    
+    if ( !visib ) {
+        
+        for( let i = 0; i < g.attributes.position.count;  i ++ ) {
+            
+             g.attributes.position.setXYZ( i, 0, 0, 0 );
+            
+        }
+        
+    }
+    
+    return g;
+
+}
+
+function processCheck( ) {
+    
+    if ( document.getElementById( "wiref" ).checked ) {
+        
+        mesh.material.wireframe = true;
+        meshKnee.material.wireframe = true;
+        
+    } else {
+        
+        mesh.material.wireframe = false;
+        meshKnee.material.wireframe = false;
+    }
+    
+    if ( document.getElementById( "texture" ).checked ) {
+    
+        mesh.material = textureMaterial;
+        meshKnee.material = textureMaterial;
+         
+    } else {
+    
+        mesh.material = material;
+        meshKnee.material = material;
+        
+    }
+    
+}
+
+</script>
+</html>

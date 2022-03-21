@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<!-- See eventListener at the end of the file for keyboard codes for motion. -->
+<head>
+    <meta charset="utf-8">
+    <title> Pino </title>
+    <style>	
+        body { 
+        margin: 0;
+        overflow: hidden;
+        }
+    </style>
+</head>
+<body> </body> 
+
+<script type="module">
+
+// @author hofk
+
+import * as THREE from '../jsm/three.module.138.js';
+import { OrbitControls } from '../jsm/OrbitControls.138.js';
+import { VertexNormalsHelper } from '../jsm/VertexNormalsHelper.138.js';
+import { vertexFaceNumbersHelper } from '../jsm/THREEn.138.js';
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera( 65, window.innerWidth / window.innerHeight, 0.001, 1000 );
+camera.position.set( 2, 2.6, -0.8 );
+const renderer = new THREE.WebGLRenderer( { antialias: true } );
+renderer.setPixelRatio( window.devicePixelRatio );
+renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setClearColor( 0xdedede, 1 );
+document.body.appendChild( renderer.domElement );
+new OrbitControls( camera, renderer.domElement );
+window.addEventListener( "resize", e => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix( );
+                                             renderer.setSize( innerWidth, innerHeight ); } );
+const light1 = new THREE.PointLight( 0xffffff, 1, 0 ); 
+const light2 = light1.clone();
+light1.position.set( -1, 1, 2 );
+light2.position.set(  0, 1, -1.5 );
+scene.add( light1 );
+scene.add(light2);
+
+const gridHelper = new THREE.GridHelper( 10, 20 );
+scene.add( gridHelper );
+
+const pi = Math.PI;
+const pi2 = Math.PI / 2;
+const pi3 = Math.PI / 3;
+const pi4 = Math.PI / 4;
+const pi5 = Math.PI / 5;
+const pi6 = Math.PI / 6;
+const pi7 = Math.PI / 7;
+const pi8 = Math.PI / 8;
+const pi9 = Math.PI / 9;
+const pi10 = Math.PI / 10;
+
+const axisX = new THREE.Vector3( 1, 0, 0 );
+const axisY = new THREE.Vector3( 0, 1, 0 );
+const axisZ = new THREE.Vector3( 0, 0, 1 );
+
+// outlines for custom geometry
+
+// outlines defined by function
+
+function sphereOutline( i ) {  // i => height segments of different heights ( .y ), factor for radius  ( .r )
+
+    return { y: ( 1 - Math.cos( i * pi ) ) / 2, r: Math.sin( i * pi ) }
+
+};
+
+const outl = x => 2 * Math.sqrt( 0.25 - ( x - 0.5 ) * ( x - 0.5 ) ); //  for uniform  heightSegments [ 0 -> 1 ] => factor for radius
+const sqrt4Outline = x => Math.pow( x, 1 / 4 );
+
+// outlines defined by  array
+
+const aaOutline1 = [ // array of some arrays [ height 0 - 1, radius factor ] to calculate outline per SplineCurve 
+    [ 1.00, 0.83 ],
+    [ 0.80, 0.77 ],
+    [ 0.60, 0.66 ],    
+    [ 0.30, 0.88 ],
+    [ 0.06, 1.00 ],
+    [ 0.00, 0.88 ] ];
+
+const aaOutline2 = [
+    [ 1.00, 0.80 ],
+    [ 0.75, 0.86 ],
+    [ 0.50, 0.96 ],
+    [ 0.25, 1.00 ],
+    [ 0.00, 0.88 ] ];
+ 
+    
+const noseOutline = [ 1.25, 1.2, 1.15, 1.1, 1.05, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0 ]; // array of factors for radius per heightSegment ( count + 1 )
+   
+const bones = [];
+const geoms = [];
+
+let b = -1; // bone index to geometry
+
+// bones with geometry
+
+// legs
+
+const upperThighRight = newBone( 'upperThighRight', 0, -0.07, 0, -pi2 ); // name, position x, y, z, rotation.z
+bones.push( upperThighRight );
+                       // bone, radius, bottom, sideward, height, radius-, heigt segments, outline (, pressX, pressZ )
+geoms.push( customGeometry( ++ b, 0.04, -0.43, 0.07, 0.41, 18, 20, aaOutline1 ) );    // part
+geoms.push( customGeometry(    b, 0.04, -0.03, 0.07, 0.08, 24, 36, sphereOutline ) ); // joint
+ 
+const lowerThighRight = newBone( 'lowerThighRight', 0, -0.45, 0 );    // name, position x, y, z,  default rotation: 0
+bones.push( lowerThighRight ); 
+geoms.push( customGeometry( ++ b, 0.03, -0.88, 0.07, 0.41, 18, 20, aaOutline1 ) );
+geoms.push( customGeometry(    b, 0.03, -0.48, 0.07, 0.06, 24, 36, sphereOutline ) );
+
+const footRight = newBone( 'footRight', 0, -0.45, 0 );
+bones.push( footRight );
+geoms.push( customGeometry( ++ b, 0.025, -1.05, 0.07, 0.15, 18, 20, sqrt4Outline, 1, 0.5 ) ); // .. , pressX, pressZ
+geoms.push( customGeometry(    b, 0.025, -0.92, 0.07, 0.04, 24, 36, sphereOutline ) );
+  
+const upperThighLeft = newBone( 'upperThighLeft', 0, -0.07,  0, pi2);
+bones.push( upperThighLeft ) ;
+geoms.push( customGeometry( ++ b, 0.04, -0.43, -0.07, 0.41, 18, 20, aaOutline1 ) );
+geoms.push( customGeometry(    b, 0.04, -0.03, -0.07, 0.08, 24, 36, sphereOutline ) );
+
+const lowerThighLeft = newBone( 'lowerThighLeft', 0, -0.45, 0 );
+bones.push( lowerThighLeft );
+geoms.push( customGeometry( ++ b, 0.03, -0.88, -0.07, 0.41, 18, 20, aaOutline1 ) );
+geoms.push( customGeometry(    b, 0.03, -0.48, -0.07, 0.06, 24, 36, sphereOutline ) );
+
+const footLeft = newBone( 'footLeft', 0, -0.45, 0 );
+bones.push( footLeft );
+geoms.push( customGeometry( ++ b, 0.025, -1.05, -0.07, 0.15, 18, 20, sqrt4Outline, 1, 0.5 ) ); // .. , pressX, pressZ
+geoms.push( customGeometry(    b, 0.025, -0.92, -0.07, 0.04, 24, 36, sphereOutline ) );
+
+// arms
+ 
+const upperArmRight = newBone( 'upperArmRight', 0, 0.18, 0, -pi2 );
+bones.push( upperArmRight );
+geoms.push( customGeometry( ++ b, 0.03, 0.14, 0.18, 0.24, 18, 20, aaOutline2) );
+geoms.push( customGeometry(    b, 0.04, 0.38, 0.18, 0.08, 24, 36, sphereOutline ) );
+
+const lowerArmRight = newBone( 'lowerArmRight', 0, 0.30, 0 );
+bones.push( lowerArmRight );
+geoms.push( customGeometry( ++ b, 0.025, -0.165, 0.18, 0.26, 18, 20, aaOutline2 ) );
+geoms.push( customGeometry(    b,  0.03,  0.090, 0.18, 0.06, 24, 36, sphereOutline ) );
+
+const handRight = newBone( 'handRight', 0, 0.30, 0 );
+bones.push( handRight );
+geoms.push( customGeometry( ++ b, 0.04, -0.28, 0.18, 0.09, 18, 20, sqrt4Outline, 0.33 ) );  // .. , pressX
+geoms.push( customGeometry(    b, 0.02, -0.20, 0.18, 0.04, 24, 36, sphereOutline ) );
+
+const upperArmLeft = newBone( 'upperArmLeft', 0, 0.18, 0, pi2 );
+bones.push( upperArmLeft );
+geoms.push( customGeometry( ++ b, 0.03, 0.14, -0.18, 0.24, 18, 20, aaOutline2 ) );
+geoms.push( customGeometry(    b, 0.04, 0.38, -0.18, 0.08, 24, 36, sphereOutline ) );
+
+const lowerArmLeft = newBone( 'lowerArmLeft', 0, 0.30, 0 );
+bones.push( lowerArmLeft );
+geoms.push( customGeometry( ++ b, 0.025, -0.165, -0.18, 0.26, 18, 20, aaOutline2 ) );
+geoms.push( customGeometry(    b,  0.03,  0.090, -0.18, 0.06, 24, 36, sphereOutline ) );
+
+const handLeft = newBone( 'handLeft', 0, 0.30, 0 );
+bones.push( handLeft );
+geoms.push( customGeometry( ++ b, 0.04, -0.28, -0.18, 0.08, 18, 20, sqrt4Outline, 0.33 ) ); // .. , pressX
+geoms.push( customGeometry(    b, 0.02, -0.20, -0.18, 0.04, 24, 36, sphereOutline ) );
+
+// body to head
+
+const spine = newBone( 'spine', 0, 0.42, 0 );
+bones.push( spine );
+geoms.push( customGeometry(++ b, 0.15, 0.02, 0, 0.44, 18, 20, aaOutline1 ) );
+
+const neck = newBone( 'neck', 0, 0.05, 0 );
+bones.push( neck );
+geoms.push( customGeometry( ++ b, 0.05, 0.44, 0, 0.10, 24, 36, sphereOutline ) );
+
+const head = newBone( 'head', 0, 0.02, 0 );
+bones.push( head );
+geoms.push( customGeometry( ++ b, 0.11, 0.49, 0, 0.24, 18, 20, sphereOutline ) );
+
+// nose
+const noseGeo = customGeometry(  b, 0.01, 0, 0, 0.2,   24, 10,   noseOutline ); // nose   segments = 24(+1), 10 for manipulation
+noseGeo.rotateX( -pi2 );
+noseGeo.translate( 0, 0.62, -0.10 );
+geoms.push( noseGeo ); // last geometry, important for nose manipulation
+let noseChange = false;
+    
+//  bones without geometry
+
+const pelvic = newBone( 'pelvic' ); // the base bone, default position ( 0, 0, 0 ), default rotation: 0
+bones.push( pelvic );
+
+const pelvicUp = newBone( 'pelvicUp' );
+bones.push( pelvicUp );
+
+const pelvicRight = newBone( 'pelvicRight', 0, 0, 0, pi2 );
+bones.push( pelvicRight );
+ 
+const pelvicLeft = newBone( 'pelvicLeft', 0, 0, 0, -pi2 );
+bones.push( pelvicLeft );
+
+const thoraxRight = newBone( 'thoraxRight', 0, 0, 0, -pi2 );
+bones.push( thoraxRight );
+
+const thoraxLeft = newBone( 'thoraxLeft', 0, 0, 0, pi2 );
+bones.push( thoraxLeft );
+
+// the end bones
+
+const footRightEnd = newBone( 'footRightEnd', 0, -0.08, 0 );
+bones.push( footRightEnd );
+
+const footLeftEnd = newBone( 'footLeftEnd', 0, -0.08, 0 );
+bones.push( footLeftEnd );
+
+const headEnd = newBone( 'headEnd', 0, 0.04, 0 );
+bones.push(  headEnd );
+
+const handRightEnd = newBone( 'handRightEnd', 0, 0.05, 0 );
+bones.push( handRightEnd );
+
+const handLeftEnd = newBone( 'handLeftEnd', 0, 0.05, 0 );
+bones.push( handLeftEnd );
+
+// create skeleton tree
+
+pelvic.add( pelvicRight );
+pelvicRight.add( upperThighRight );
+upperThighRight.add( lowerThighRight );
+lowerThighRight.add( footRight ); 
+footRight.add( footRightEnd );
+
+pelvic.add( pelvicLeft );
+pelvicLeft.add( upperThighLeft );
+upperThighLeft.add( lowerThighLeft );
+lowerThighLeft.add(  footLeft );
+footLeft.add( footLeftEnd );
+
+pelvic.add( pelvicUp  );
+pelvicUp.add( spine );
+spine.add( neck );
+neck.add( head );
+head.add( headEnd ); 
+
+spine.add( thoraxRight );
+thoraxRight.add( upperArmRight );
+upperArmRight.add( lowerArmRight );
+lowerArmRight.add( handRight );
+handRight.add( handRightEnd );
+
+spine.add( thoraxLeft );
+thoraxLeft.add( upperArmLeft );
+upperArmLeft.add( lowerArmLeft );
+lowerArmLeft.add( handLeft );
+handLeft.add( handLeftEnd );
+
+// material
+
+const loader = new THREE.TextureLoader( );
+const texture = loader.load( 'beech.jpg' );
+const texture1 = loader.load( 'uv_grid_opengl.jpg' );
+
+const material00 = new THREE.MeshPhongMaterial( { map: texture, color: 0x896215, emissive: 0xa96415, side: THREE.FrontSide, wireframe: false } );
+const material01 = new THREE.MeshBasicMaterial( { map: texture1, side: THREE.FrontSide, wireframe: false } );
+const material02 = new THREE.MeshPhongMaterial( { color: 0x896215, emissive: 0xa96415, side: THREE.DoubleSide, transparent: true, opacity: 0.5, wireframe: false } );
+const material03 = new THREE.MeshBasicMaterial( { color: 0x896215, side: THREE.FrontSide, wireframe: true } );
+
+const materials = [ 
+    material00, // upperThighRight  part
+    material02, //                  joint                
+    material02, // lowerThighRight
+    material03, //
+    material03, // footRight
+    material00, // 
+    material01, // upperThighLeft
+    material01, //
+    material01, // lowerThighLeft
+    material01, // 
+    material01, // footLeft
+    material01, //
+    material03, // upperArmRight
+    material01, // 
+    material02, // lowerArmRight
+    material00, //
+    material01, // handRight
+    material01, // 
+    material00, // upperArmLeft
+    material00, //
+    material00, // lowerArmLeft
+    material00, // 
+    material00, // handLeft
+    material00, //
+    material00, // spine
+    material00, // neck
+    material00, // head
+    material03  // nose
+];              
+
+const geometry = link( geoms ); // unites the individual geometries 
+
+// nose, last linked geometry for manipulation
+geometry.noseIdx = geometry.attributes.position.count - geometry.positionCounts[ geometry.positionCounts.length - 1 ]; // index
+geometry.noseZ = new THREE.Vector3( ).fromBufferAttribute( geometry.attributes.position, geometry.noseIdx ).z;
+geometry.lieLen = 0.06;
+geometry.noseLen = 0.06;
+startLyingNose( geometry.lieLen );
+
+const mesh = new THREE.SkinnedMesh( geometry, materials ); //  uses multi material
+ 
+bindSkin( );
+
+const skeleton = new THREE.Skeleton( bones );
+mesh.add( pelvic );                    // add base bone
+ 
+mesh.bind( skeleton );
+mesh.position.y = 0.925;
+scene.add( mesh );
+
+// basic rotations around x axis
+footRight.rotation.x = pi2 - 0.12; // rotateOnAxis( axisX, pi2 - 0.12 );
+footLeft.rotation.x = pi2 - 0.12;  // rotateOnAxis( axisX, pi2 - 0.12 );
+
+const sdr = x => x >= 0 &&  x<= 1 ? 1 - Math.pow( 2 * x - 1, 6 ) + 0.1 : 1;  // smooth direction reversal factor
+
+const dφ = 0.01; //  base angle difference for rotations
+
+scene.add( new THREE.SkeletonHelper( mesh ) );
+
+const testMesh = new THREE.Mesh( customGeometry( ++ b, 0.5, 0.0, -2.5, 1.0, 18, 12, sphereOutline ), material02 );
+scene.add( testMesh );
+const helper = new vertexFaceNumbersHelper( camera, testMesh, 1, 0.025, 0x1144ff );  // from THREEn.js
+const vertexNormalsHelper = new VertexNormalsHelper( testMesh, 0.08, 0x000000 );
+scene.add( vertexNormalsHelper );
+
+animate( );
+
+//...........................................................
+
+function animate( ) {
+    
+    requestAnimationFrame( animate );
+    
+    action( );
+    
+    renderer.render( scene, camera );
+    
+}
+
+function action( ) {
+    
+    for ( let i = 0; i < bones.length; i ++ ) {
+        
+        if( bones[ i ].rotateX.on ) rotate( bones[ i ], axisX );      
+        if( bones[ i ].rotateY.on ) rotate( bones[ i ], axisY );
+        if( bones[ i ].rotateZ.on ) rotate( bones[ i ], axisZ );
+        
+        if( bones[ i ].swingX.on ) swing( bones[ i ], axisX );                    
+        if( bones[ i ].swingY.on ) swing( bones[ i ], axisY );
+        if( bones[ i ].swingZ.on ) swing( bones[ i ], axisZ );
+        
+    }
+
+    lyingNose(  );
+      
+}
+
+function startRotate( b_rotate, φ ) { // b_rotate:  b.rotateX  b.rotateY   b.rotateZ
+   
+   b_rotate.φ = φ;
+   b_rotate.sf = ( φ < 0 && b_rotate.sf > 0 ) || ( φ > 0 && b_rotate.sf < 0 ) ? -b_rotate.sf : b_rotate.sf;
+   
+   b_rotate.on = true;
+      
+}
+
+function rotate( b, axis ) {
+
+    const b_rotate = axis === axisX ?  b.rotateX : ( axis === axisY ?  b.rotateY  :  b.rotateZ );
+    
+    const rdφ = b_rotate.sf * dφ;
+    
+    if ( b_rotate.on ) {
+        
+        let rotS, rotE; // rotate start, end
+        
+        if( b_rotate.φ > 0 ) {
+        
+            rotS = b_rotate.φ >= rdφ; 
+            rotE = b_rotate.φ > 0;
+            
+        } else {
+        
+            rotS = b_rotate.φ <= rdφ; 
+            rotE = b_rotate.φ < 0;        
+        
+        }
+        
+        if ( rotS ) {
+            
+            b.rotateOnAxis( axis, rdφ );
+            b_rotate.φ -= rdφ
+            
+        } else if ( rotE ) {
+            
+            b.rotateOnAxis( axis, b_rotate.φ );
+            b_rotate.on = false;
+            
+        } else { b_rotate.on = false; }   
+        
+    }
+    
+}
+
+function startSwing( b_swing, φSpan, up ) {
+    
+    if ( !b_swing.on ) {
+        
+        b_swing.φSpan = Math.abs( φSpan );
+        b_swing.up = up;
+        b_swing.φMin = b_swing.φCenter - b_swing.φSpan / 2;
+        b_swing.φMax = b_swing.φCenter + b_swing.φSpan / 2;        
+        b_swing.φ = b_swing.φ !== undefined ? b_swing.φ : 0;
+        
+        b_swing.on = true;
+        
+    }
+       
+}
+
+function pauseSwing( b_swing ) { 
+    
+    b_swing.on = false;
+    
+}
+
+function  swing( b, axis ) {
+
+    const b_swing = axis === axisX ? b.swingX : ( axis === axisY ?  b.swingY :  b.swingZ );
+    
+    if ( b_swing.on ) {
+        
+        const φ = b_swing.sf * dφ * sdr( ( b_swing.φ - b_swing.φMin ) / b_swing.φSpan  ); // sdr( )  smooth direction reversal
+        
+        if( b_swing.up ) {
+            
+            b.rotateOnAxis( axis, φ ); 
+            b_swing.φ += φ; 
+            
+            if ( b_swing.φ >= b_swing.φMax ) b_swing.up = false;
+            
+        }
+        
+        if( !b_swing.up ) {
+            
+            b.rotateOnAxis( axis, -φ );
+            b_swing.φ -= φ;
+             
+            if ( b_swing.φ <= b_swing.φMin ) b_swing.up = true;
+            
+        }
+        
+    }
+    
+}
+ 
+function setRotate_dφ( b,sfX, sfY, sfZ ) {
+    
+   b.rotateX.sf = sfX;
+   b.rotateY.sf = sfY;
+   b.rotateZ.sf = sfZ;
+    
+}
+
+function setSwing_dφ( b, sfX, sfY, sfZ ) {
+    
+   b.swingX.sf = sfX;
+   b.swingY.sf = sfY;
+   b.swingZ.sf = sfZ;
+    
+}
+
+function startLyingNose( lieLen ) {
+    
+    geometry.lieLen = lieLen;
+    
+    geometry.longer = geometry.noseLen <= lieLen; 
+    
+    noseChange = true;
+    
+}
+
+function lyingNose(  ) {
+  
+    if ( noseChange ) {
+    
+        const pos = geometry.attributes.position;
+        
+        if ( geometry.longer ) {
+        
+            if ( geometry.noseLen <= geometry.lieLen ) {
+                
+                for( let i = geometry.noseIdx; i < pos.count - 52; i++ ){  // nose ist the last linked geometry part
+                    
+                    pos.setZ( i, geometry.noseZ - geometry.noseLen * Math.floor( ( i - geometry.noseIdx ) / 25 ) * 0.1 ); 
+                    
+                }
+                
+                geometry.noseLen +=  0.005;
+    
+                pos.needsUpdate = true;
+                
+            } else { noseChange = false }
+        
+        }
+        
+        if ( !geometry.longer ) {
+            
+            if ( geometry.noseLen >= geometry.lieLen ) {
+                
+                for( let i = geometry.noseIdx; i < pos.count - 52; i++ ){  // nose ist the last linked geometry part
+                    
+                    pos.setZ( i, geometry.noseZ - geometry.noseLen * Math.floor( ( i - geometry.noseIdx ) / 25 ) * 0.1 ); 
+                    
+                }
+                
+                geometry.noseLen -=  0.005;
+    
+                pos.needsUpdate = true;
+                
+            } else { noseChange = false }
+            
+        }
+        
+    }
+    
+}
+
+function boneHome( b ) { 
+    
+    b.rotateX.on = false;
+    b.rotateY.on = false;
+    b.rotateZ.on = false;
+    
+    b.rotateX.φ = 0;
+    b.rotateY.φ = 0;
+    b.rotateZ.φ = 0;
+    
+    b.swingX.on = false;
+    b.swingY.on = false;
+    b.swingZ.on = false;
+    
+    b.swingX.φ = 0;
+    b.swingY.φ = 0;
+    b.swingZ.φ = 0;
+    
+    b.quaternion.set( b.qu.x, b.qu.y, b.qu.z, b.qu.w );
+    
+}
+
+function newBone( name, x, y, z, ζ ) {
+    
+    const b = new THREE.Bone( );
+    
+    b.position.x = x !== undefined ? x : 0;
+    b.position.y = y !== undefined ? y : 0;
+    b.position.z = z !== undefined ? z : 0;
+    
+    b.rotation.z = ζ !== undefined ? ζ : 0;
+    
+    //  sf: speed factor
+    
+    b.rotateX = { on: false, sf: 1, φ: 0 };
+    b.rotateY = { on: false, sf: 1, φ: 0 };
+    b.rotateZ = { on: false, sf: 1, φ: 0 };
+    
+    b.swingX = { on: false, sf: 1, φMin: 0, φCenter: 0, φMax: 0, up: true, φSpan: 0, φ: undefined };
+    b.swingY = { on: false, sf: 1, φMin: 0, φCenter: 0, φMax: 0, up: true, φSpan: 0, φ: undefined };
+    b.swingZ = { on: false, sf: 1, φMin: 0, φCenter: 0, φMax: 0, up: true, φSpan: 0, φ: undefined };
+    
+    b.name = name;
+    
+    b.qu = { x: b.quaternion.x, y: b.quaternion.y, z: b.quaternion.z, w: b.quaternion.w }; //  initial quaternion values
+    
+    return b;
+    
+}
+
+function bindSkin( ) {
+    
+    const skinIndices = [];
+    const skinWeights = [];
+    
+    for ( let i = 0; i < geoms.length; i ++ ) {
+        
+        for ( let j = 0; j < geoms[ i ].attributes.position.count; j ++ ) {
+            
+            const skinIndex = geoms[ i ].bone;
+            const skinWeight = 1;
+            
+            skinIndices.push( skinIndex, 0, 0, 0 );
+            skinWeights.push( skinWeight, 0, 0, 0 );
+            
+        }
+    
+    }
+    
+    geometry.setAttribute( 'skinIndex',  new THREE.Uint16BufferAttribute( skinIndices, 4 ) );
+    geometry.setAttribute( 'skinWeight', new THREE.Float32BufferAttribute( skinWeights, 4 ) );
+
+}
+
+function customGeometry( bone, r, b, s, h, rs, hs, outline, prsX, prsZ ) {
+    
+    // parameters: bone, radius, bottom, sideward, height, radius-, heigt segments, outline (, pressX, pressZ )
+    
+    const prX = prsX !== undefined ? prsX : 1; 
+    const prZ = prsZ !== undefined ? prsZ : 1; 
+    
+    const g = new THREE.BufferGeometry( );
+    
+    g.bone = bone; // for geometry assignment
+    
+    const rss = rs + 1;
+    const hss = hs + 1;
+    
+    let fr; // factor(s) for radius per hight segment
+    
+    let uhs; //  default: uniform height segments
+
+    if ( Array.isArray( outline ) ) {
+    
+        uhs = true; // uniform height segments
+        
+        if (  Array.isArray( outline[ 0 ] ) ) { // array of some arrays [ height 0 - 1, radius factor ] to calculate factors for outline per SplineCurve 
+        
+            const valueY = ( outline, count ) => new THREE.SplineCurve( outline.map( p => { return new THREE.Vector2( p[ 0 ], p[ 1 ] ) } ) ).getPoints( count ).map( v => { return  v.y } );
+            
+            fr = valueY( outline, hs );       
+                
+        } else { // array of factors for radius per heightSegment 
+            
+             fr = outline;
+              
+        }
+        
+    } else {    // functions ( two variants )
+    
+        fr = [];
+        
+        if ( outline ( 0 ).y  === undefined ) { // function for heightSegments [ 0 -> 1 ] => factor for radius
+        
+            uhs = true; // uniform height segments
+        
+            for ( let i = 0; i < hss; i ++ ) {
+            
+                fr.push( outline( i / hs ) ); 
+            
+            }
+            
+        } else {    // function for variable height segments with associated radius
+        
+           uhs = false; // height segments of different heights  
+           
+           for ( let i = 0; i < hss; i ++ ) {
+            
+                fr.push( outline( i / hs ).r ); 
+            
+            }            
+            
+        }
+        
+    }
+    
+    const faceCount = rs * hss * 2;  // = rs * hs * 2  +  rs * 2 
+    const positionCount = rss * hss + rss * 2 + 2;
+    
+    const indices = new Uint32Array( faceCount * 3 );
+    const positions = new Float32Array( positionCount * 3 );  
+    const uvs = new Float32Array( positionCount * 2 );
+    
+    g.setIndex( new THREE.BufferAttribute( indices, 1 ) );	
+    g.setAttribute( 'position', new THREE.BufferAttribute( positions, 3 ) );
+    g.setAttribute( 'uv', new THREE.BufferAttribute( uvs, 2 ) );
+    
+    let idxCount = 0;
+    
+    let a, b1, b2, c1, c2;
+    
+    for ( let i = 0; i < hs; i ++ ) {
+    
+        for ( let j = 0; j < rs; j ++ ) {
+
+            // 2 faces / segment,  3 vertex indices
+            a =  rss * i + j;
+            b1 = rss * ( i + 1 ) + j;
+            c1 = b1 + 1;
+         // b2 = b1 + 1;
+            c2 = a + 1;
+            
+            indices[ idxCount     ] = a;
+            indices[ idxCount + 1 ] = c1;
+            indices[ idxCount + 2 ] = b1; 
+            
+            indices[ idxCount + 3 ] = a;
+            indices[ idxCount + 4 ] = c2;
+            indices[ idxCount + 5 ] = c1;   // = b2
+            
+            idxCount += 6;
+            
+        }
+            
+    }
+    
+    a = c1 + 1; // center bottom
+    b1 = a;
+    c1 = b1 + 1;
+    
+    for ( let j = 0; j < rs; j ++ ) {
+ 
+        indices[ idxCount     ] = a;
+        indices[ idxCount + 1 ] = ++ c1; // circulation sense acb
+        indices[ idxCount + 2 ] = ++ b1;
+        
+        idxCount += 3;
+        
+    }
+    
+    a  = c1 + 1; // center top
+    b1 = a;
+    c1 = b1 + 1;
+    
+    for ( let j = 0; j < rs; j ++ ) {
+ 
+        indices[ idxCount     ] = a;
+        indices[ idxCount + 1 ] = ++ b1; // circulation sense abc
+        indices[ idxCount + 2 ] = ++ c1;
+        
+        idxCount += 3;
+        
+    }
+     
+    let vIdx = 0;   // vertex index
+    let posIdx;     // position  index
+    
+    idxCount = 0;
+    let u, v;
+    
+    for ( let i = 0; i < hss; i ++ ) {
+        
+        v = i / hs;
+           
+        for ( let j = 0; j < rss; j ++ ) {
+            
+            u = j / rs;
+            
+           uvs[ idxCount     ] = u;
+           uvs[ idxCount + 1 ] = v;
+           
+           idxCount += 2; 
+           
+        }
+        
+    }
+    
+    const p2i = Math.PI * 2;
+    
+    uvs[ idxCount     ] = 0.5; // center bottom
+    uvs[ idxCount + 1 ] = 0.5;
+           
+    idxCount += 2;
+    
+    for ( let j = 0; j < rss; j ++ ) {
+        
+        uvs[ idxCount     ] = 1 - 0.5 * ( 1 + Math.sin( j / rs * p2i ) );
+        uvs[ idxCount + 1 ] = 1 - 0.5 * ( 1 + Math.cos( j / rs * p2i ) );
+           
+        idxCount += 2; 
+        
+    }
+    
+    uvs[ idxCount     ] = 0.5; // center top
+    uvs[ idxCount + 1 ] = 0.5;
+           
+    idxCount += 2;  
+    
+    for ( let j = 0; j < rss; j ++ ) {
+                
+        uvs[ idxCount     ] = 0.5 * ( 1 + Math.sin( j / rs * p2i ) );
+        uvs[ idxCount + 1 ] = 1 - 0.5 * ( 1 + Math.cos( j / rs * p2i ) );
+           
+        idxCount += 2;         
+        
+    }
+    
+    const rsCos = ( j, rs ) =>  Math.cos( p2i * j / rs );
+    const rsSin = ( j, rs ) =>  Math.sin( p2i * j / rs );
+    
+    let xf, zf, x, y, z;
+    vIdx = 0;
+    
+    for ( let i = 0; i < hss; i ++ ) { // height
+        
+        xf = r * fr[ i ] * prX;  // x factor
+        y = b + h * ( uhs ? i / hs : outline( i / hs ).y ); // uhs: uniform ( or different ) height segments
+        zf = r * fr[ i ] * prZ;  // z factor
+        
+        for ( let j = 0; j < rss; j ++ ) { // radial
+        
+            x = s + xf * rsCos( j, rs );
+            z =   - zf * rsSin( j, rs );
+                       
+            setPosition( );
+
+        }
+        
+    }
+    
+    posIdx = vIdx * 3;
+        
+    positions[ posIdx ]  = s;       // center bottom
+    positions[ posIdx + 1 ]  = b;
+    positions[ posIdx + 2 ]  = 0;
+    
+    vIdx ++;    
+    
+    for ( let j = 0; j < rss; j ++ ) { // radial, bottom
+        
+        x = s + r * fr[ 0 ] * prX * rsCos( j, rs );
+        y = b;
+        z = - r  * fr[ 0 ] * prZ * rsSin( j, rs ); 
+        
+        setPosition( );
+        
+    }
+    
+    posIdx = vIdx * 3;
+        
+    positions[ posIdx ]  = s;       // center top
+    positions[ posIdx + 1 ]  = b + h;
+    positions[ posIdx + 2 ]  = 0;
+    
+    vIdx ++;    
+       
+    for ( let j = 0; j < rss; j ++ ) { // radial, top  
+        
+        x = s + r * fr[ hs ] * prX * rsCos( j, rs );
+        y = b + h;
+        z = - r  * fr[ hs ] * prZ * rsSin( j, rs ); 
+        
+        setPosition( );
+
+    }
+    
+    g.computeVertexNormals( );
+    
+    // calculate new average normals at seams ( smooth shading )
+    
+    for ( let i = 0; i < hss; i ++ ) { // height
+        
+        smoothEdge( rss * i, rss * i + rs );
+        
+    }
+    
+    // calculate new average normals at bottom and top ( smooth shading )
+    
+    for( let j = 0; j < rss ; j ++ ) { // bottom
+        
+        smoothEdge( j, rss * hss + 1 + j );
+        
+    }
+    
+    for( let j = 0; j < rss ; j ++ ) { // top
+        
+        smoothEdge( rss * hs + j, rss * hss + rss + 2 + j );
+        
+    }
+    g.attributes.normal.needsUpdate = true;
+    
+    return g;
+    
+	function smoothEdge( idxa, idxb ) {
+        
+		const v3a = new THREE.Vector3( );
+		const v3b = new THREE.Vector3( );
+        const v3  = new THREE.Vector3( );
+		
+		v3a.set( g.attributes.normal.getX( idxa ), g.attributes.normal.getY( idxa ), g.attributes.normal.getZ( idxa ) );
+		v3b.set( g.attributes.normal.getX( idxb ), g.attributes.normal.getY( idxb ), g.attributes.normal.getZ( idxb ) );
+		
+		v3.addVectors( v3a, v3b ).normalize( );
+		
+		g.attributes.normal.setXYZ( idxa, v3.x, v3.y, v3.z );
+		g.attributes.normal.setXYZ( idxb, v3.x, v3.y, v3.z );
+		
+	} 
+    
+    function setPosition( ) {
+
+        posIdx = vIdx * 3;
+            
+        positions[ posIdx ]  = x;
+        positions[ posIdx + 1 ]  = y;
+        positions[ posIdx + 2 ]  = z;
+        
+        vIdx ++;        
+        
+    }
+    
+}
+
+function link( geoms ) {
+
+    const g = new THREE.BufferGeometry( );
+    
+    g.faceCounts = [];
+    g.positionCounts = [];
+    let faceCount = 0;
+    let positionCount = 0;
+    
+    for ( let i = 0; i < geoms.length; i ++ ) {
+        
+        g.faceCounts[ i ] = geoms[ i ].index.array.length / 3;
+        faceCount += g.faceCounts[ i ];
+        
+        g.positionCounts[ i ] = geoms[ i ].attributes.position.count;
+        positionCount += g.positionCounts[ i ];
+    
+    }
+    
+    const indices = new Uint32Array( faceCount * 3 );
+    const positions = new Float32Array( positionCount * 3 );
+    const normals = new Float32Array( positionCount * 3 );
+    const uvs = new Float32Array( positionCount * 2 );
+    
+    g.setIndex( new THREE.BufferAttribute( indices, 1 ) );	
+    g.setAttribute( 'position', new THREE.BufferAttribute( positions, 3 ) );
+    g.setAttribute( 'normal', new THREE.BufferAttribute( normals, 3 ) );
+    g.setAttribute( 'uv', new THREE.BufferAttribute( uvs, 2 ) );
+     
+    let indOffs = 0;
+    let indVal  = 0;
+    let posOffs = 0;
+    let uvsOffs = 0;
+    
+    for ( let i = 0; i < geoms.length; i ++ ) {
+        
+        for ( let j = 0; j <= geoms[ i ].index.array.length; j ++ ) {
+            
+           indices[ j + indOffs ] = indVal + geoms[ i ].index.array[ j ] ;
+            
+        }
+        
+        for ( let j = 0; j < geoms[ i ].attributes.position.count * 3; j ++ ) {
+            
+            positions[ j + posOffs ] = geoms[ i ].attributes.position.array[ j ];
+
+        }
+        
+        for ( let j = 0; j < geoms[ i ].attributes.normal.count * 3; j ++ ) {
+            
+            normals[ j + posOffs ] = geoms[ i ].attributes.normal.array[ j ];
+
+        }
+        
+        for ( let j = 0; j < geoms[ i ].attributes.uv.count * 2;  j ++ ) {
+            
+            uvs[ j + uvsOffs ] = geoms[ i ].attributes.uv.array[ j ];
+            
+        }
+     
+        g.addGroup( indOffs, g.faceCounts[ i ] * 3, i ); // multi material groups
+        
+        indOffs += g.faceCounts[ i ] * 3;
+        indVal  += g.positionCounts[ i ];
+        posOffs += g.positionCounts[ i ] * 3;
+        uvsOffs += g.positionCounts[ i ] * 2;
+        
+    }
+    
+    return g;
+
+}
+
+document.addEventListener('keydown', function( e ) {
+
+	const c = e.keyCode;
+    
+    if ( c ===  48 ) {  startLyingNose( 0.06 ); }  // 0
+    if ( c ===  49 ) {  startLyingNose( 0.10 ); }  // 1
+    if ( c ===  50 ) {  startLyingNose( 0.14 ); }  // 2 
+    if ( c ===  51 ) {  startLyingNose( 0.18 ); }  // 3
+    if ( c ===  52 ) {  startLyingNose( 0.22 ); }  // 4
+    if ( c ===  53 ) {  startLyingNose( 0.26 ); }  // 5
+    if ( c ===  54 ) {  startLyingNose( 0.30 ); }  // 6
+    if ( c ===  55 ) {  startLyingNose( 0.34 ); }  // 7
+    if ( c ===  56 ) {  startLyingNose( 0.38 ); }  // 8
+    if ( c ===  57 ) {  startLyingNose( 0.42 ); }  // 9 
+ 
+	if ( c === 72 ) {   //	h higher speed
+    
+        upperArmRight.swingX.sf *= 1.1;
+        lowerArmRight.swingX.sf *= 1.1;
+        upperThighRight.swingX.sf *= 1.1;
+        lowerThighRight.swingX.sf *= 1.1;
+        
+    } 
+
+    if ( c ===  73 ) {  // i  initial pose
+        
+        boneHome( upperArmRight );
+        boneHome( lowerArmRight );
+        boneHome( upperThighRight ); 
+        boneHome( lowerThighRight );
+        
+    }
+    
+    if ( c === 76 ) {   // l lower speed
+     
+        upperArmRight.swingX.sf *= 0.9; 
+        lowerArmRight.swingX.sf *= 0.9;
+        upperThighRight.swingX.sf *= 0.9;
+        lowerThighRight.swingX.sf *= 0.9;
+        
+    } 
+     
+    if ( c === 80 ) {   // p   pause
+     
+        pauseSwing( upperArmRight.swingX );        
+        pauseSwing( lowerArmRight.swingX ); 
+        
+        pauseSwing( upperThighRight.swingX );        
+        pauseSwing( lowerThighRight.swingX );        
+    }
+    
+    if ( c === 82 ) {   // r   rotate
+    
+        startRotate( upperArmLeft.rotateZ, -pi10 );    
+        startRotate( head.rotateY, -pi8 );
+        
+    }
+    
+	if ( c === 83 ) {   //	s   swing
+ 
+        startSwing( upperArmRight.swingX, pi3, true );
+        
+        lowerArmRight.swingX.φCenter = -pi6;
+        startSwing( lowerArmRight.swingX, -pi6, false );
+        
+        startSwing( upperThighRight.swingX, pi3, true );
+        
+        lowerThighRight.swingX.φCenter = -pi6;
+        startSwing( lowerThighRight.swingX, pi3, true );
+        
+        head.swingX.φCenter = -pi8 / 2;
+        startSwing( head.swingX, pi8, true );
+        
+    }
+    
+} );
+
+</script>
+</html>

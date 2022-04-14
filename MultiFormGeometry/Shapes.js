@@ -132,6 +132,11 @@ function φOutlineR( h, φ ) {
     return { y: h,  r: Math.sin( 4 * φ  ) };   // full circle  φ = 2*PI
 }
 
+function φOutlineR1( h, φ ) {
+
+    return { y:  h + 0.3 * Math.sin( 4 * φ   ),  r: 1.5 + 0.4 * Math.sin( 2 * φ ) };   // full circle  φ = 2*PI
+}
+
 // h, ( φ ) =>  height, φ [ 0 -> 1 ], height segments of different heights ( .y ), factors for x and z,   φ optional
 
 function φOutline1( h, φ ) {

@@ -355,7 +355,7 @@ function multiFormGeometryStatic( p ) {
             for ( let j = 0; j < rss; j ++ ) { // radial, bottom
                 
                 x = cX + r * fx[ 0 ][ j ] * scX * Math.cos( φ( j ) );
-                y =          fh[ 0 ][ 0 ];
+                y =          fh[ 0 ][ j ];
                 z = cZ - r * fz[ 0 ][ j ] * scZ * Math.sin( φ( j ) );
                 
                 rotations( );
@@ -390,7 +390,7 @@ function multiFormGeometryStatic( p ) {
             for ( let j = 0; j < rss; j ++ ) { // radial, top
                 
                 x =  r * fx[ hs ][ j ] * scX * Math.cos( φ( j ) );
-                y =  h * fh[ hs ][ 0 ] * scY;
+                y =  h * fh[ hs ][ j ] * scY;
                 z = -r * fz[ hs ][ j ] * scZ * Math.sin( φ( j ) );
                 
                 if ( tor !== 0 ) {

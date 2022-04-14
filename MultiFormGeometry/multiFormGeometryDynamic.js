@@ -355,7 +355,7 @@ function multiFormGeometryDynamic( p ) {
             for ( let j = 0; j < rss; j ++ ) { // radial, bottom
                 
                 x = cX + g.r( t ) * fx[ 0 ][ j ] * g.scX( t ) * Math.cos( φ( j ) );
-                y =                 fh[ 0 ][ 0 ];
+                y =                 fh[ 0 ][ j ];
                 z = cZ - g.r( t ) * fz[ 0 ][ j ] * g.scZ( t ) * Math.sin( φ( j ) ); 
                 
                 rotations( t );

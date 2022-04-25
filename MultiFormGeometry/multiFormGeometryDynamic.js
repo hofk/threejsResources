@@ -1,4 +1,4 @@
-// This function is exactly line by line comparable with
+// This function is exactly line by line comparable with multiFormGeometryStatic.js
 // @author hofk
 
 function multiFormGeometryDynamic( p ) {

@@ -3,9 +3,9 @@
 
 function multiFormGeometryDynamic( p ) {
     
-    //   p = { radius, height, withBottom, withTop, translateX, translateY, translateZ, 
-    //           scaleX, scaleY, scaleZ, shearX, shearZ, radialSegments, heightSegments, centerline, outline, torsion, rotateX, rotateY, rotateZ }
- 
+    //   p = { radius, height, radialSegments, heightSegments, cover, withBottom, withTop, onTop, centerline, outline, torsion,
+    //         translateX, translateY, translateZ, scaleX, scaleY, scaleZ, shearX, shearZ, rotateX, rotateY, rotateZ }
+    
     const g = new THREE.BufferGeometry( );
     
     const p2i = Math.PI * 2;

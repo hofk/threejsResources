@@ -3,7 +3,7 @@
 
 function multiFormGeometryStatic( p ) {
     
-    //   p = { radius, height, radialSegments, heightSegments, cover, withBottom, withTop, centerline, outline, torsion,
+    //   p = { radius, height, radialSegments, heightSegments, cover, withBottom, withTop, onTop, centerline, outline, torsion,
     //         translateX, translateY, translateZ, scaleX, scaleY, scaleZ, shearX, shearZ, rotateX, rotateY, rotateZ }
  
     const g = new THREE.BufferGeometry( );

@@ -10,12 +10,20 @@ function multiFormGeometryDynamic( p ) {
     
     const p2i = Math.PI * 2;
     const φ = j => p2i * j / rs; // j === rs => full circle
-    
+    const φc = j => -Math.PI + φ( j );
+        
     g.r = ( typeof p.radius === 'number' ? ( x => p.radius ) : p.radius ) || ( x => 0.5 );
     g.h = ( typeof p.height === 'number' ? ( x => p.height ) : p.height ) || ( x => 1.0 );
     
-    const wb = p.withBottom !== undefined ? p.withBottom : true;
-    const wt = p.withTop !== undefined ? p.withTop : true;
+    const rs = p.radialSegments || 18;
+    let hs = p.heightSegments || 18;
+    
+    const cover = p.cover || false;
+    
+    const wb = p.withBottom !== undefined && !cover && rs > 2 ? p.withBottom : ( !cover && rs > 2 ? true : false );
+    const wt = p.withTop !== undefined && !cover && rs > 2 ? p.withTop : ( !cover && rs > 2 ? true : false );
+    
+    const onTop = p.onTop || false; // if true, bottom on xz plane
     
     g.trX = ( typeof p.translateX === 'number' ? ( x => p.translateX ) : p.translateX ) || ( x => 0 );
     g.trY = ( typeof p.translateY === 'number' ? ( x => p.translateY ) : p.translateY ) || ( x => 0 );
@@ -31,9 +39,6 @@ function multiFormGeometryDynamic( p ) {
     g.rotX = ( typeof p.rotateX === 'number' ? ( x => p.rotateX ) : p.rotateX ) || ( x => 0 );
     g.rotY = ( typeof p.rotateY === 'number' ? ( x => p.rotateY ) : p.rotateY ) || ( x => 0 );
     g.rotZ = ( typeof p.rotateZ === 'number' ? ( x => p.rotateZ ) : p.rotateZ ) || ( x => 0 );    
-    
-    const rs = p.radialSegments || 18;
-    let hs = p.heightSegments || 18;
     
     const rss = rs + 1;
     let hss = hs + 1; // can be overwritten
@@ -312,6 +317,15 @@ function multiFormGeometryDynamic( p ) {
                 y =  g.h( t ) * fh[ i ][ j ] * g.scY( t ); 
                 z = -g.r( t ) * fz[ i ][ j ] * g.scZ( t ) * Math.sin( φ( j ) );
                 
+                if ( cover ) {
+                    
+                    z = Math.sqrt( x * x + z * z ) - g.r( t ) * fx[ i ][ 0 ] * g.scX( t );
+                    x = g.r( t ) * fx[ i ][ j ] * g.scX( t ) * φc( j ); // center x
+                    
+                }
+                
+                if ( !onTop ) y -= g.h( t ) * fh[ hs ][ j ] * g.scY( t ) / 2; // center y
+                
                 if ( g.tor( t ) !== 0 ) {
                     
                     rt = rotate( x, z, g.tor( t ) * ihs );
@@ -344,6 +358,8 @@ function multiFormGeometryDynamic( p ) {
             y = fh[ 0 ][ 0 ];
             z = cZ;
             
+            if ( !onTop ) y -= g.h( t ) * fh[ hs ][ 0 ] * g.scY( t ) / 2; // center y
+            
             rotations( t );
             
             x += g.trX( t ); 
@@ -357,6 +373,8 @@ function multiFormGeometryDynamic( p ) {
                 x = cX + g.r( t ) * fx[ 0 ][ j ] * g.scX( t ) * Math.cos( φ( j ) );
                 y =                 fh[ 0 ][ j ];
                 z = cZ - g.r( t ) * fz[ 0 ][ j ] * g.scZ( t ) * Math.sin( φ( j ) ); 
+                
+                if ( !onTop ) y -= g.h( t ) * fh[ hs ][ j ] * g.scY( t ) / 2; //  center y
                 
                 rotations( t );
                 
@@ -379,6 +397,8 @@ function multiFormGeometryDynamic( p ) {
             y = g.h( t ) * fh[ hs ][ 0 ] * g.scY( t );
             z = cZ +  g.shZ( t );
             
+            if ( !onTop ) y -= g.h( t ) * fh[ hs ][ 0 ] * g.scY( t ) / 2; // center y
+            
             rotations( t );
             
             x += g.trX( t );
@@ -392,6 +412,8 @@ function multiFormGeometryDynamic( p ) {
                 x =  g.r( t ) * fx[ hs ][ j ] * g.scX( t ) * Math.cos( φ( j ) );
                 y =  g.h( t ) * fh[ hs ][ j ] * g.scY( t );
                 z = -g.r( t ) * fz[ hs ][ j ] * g.scZ( t ) * Math.sin( φ( j ) ); 
+                
+                if ( !onTop ) y -= g.h( t ) * fh[ hs ][ j ] * g.scY( t ) / 2; // center y
                 
                 if ( g.tor( t ) !== 0 ) {
                     

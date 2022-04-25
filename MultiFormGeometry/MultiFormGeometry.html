@@ -56,16 +56,19 @@ scene.add( gridHelper );
 const loader = new THREE.TextureLoader( );
 const texture = loader.load( 'beech.jpg' );
 const texture1 = loader.load( 'uv_grid_opengl.jpg' );
+const textureEarth = loader.load( 'earth_atmos_2048.jpg' );
 
 const material00 = new THREE.MeshPhongMaterial( { map: texture, color: 0x896215, emissive: 0xa96415, side: THREE.FrontSide, wireframe: false } );
 const material01 = new THREE.MeshBasicMaterial( { map: texture1, side: THREE.DoubleSide, wireframe: false } );
 const material02 = new THREE.MeshPhongMaterial( { color: 0x896215, emissive: 0xa96415, side: THREE.DoubleSide, transparent: true, opacity: 0.5, wireframe: false } );
 const material03 = new THREE.MeshBasicMaterial( { color: 0x9900cc, side: THREE.FrontSide, wireframe: true } );
+const material04 = new THREE.MeshBasicMaterial( { map: textureEarth, side: THREE.DoubleSide } );
 
 // some parameters default
 
 const staticGeometry0 = multiFormGeometryStatic( {
     radialSegments: 4,
+    onTop: true,
     centerline: centerline01,
     outline: cylinderOutline,
     torsion: -Math.PI * 2,
@@ -81,7 +84,8 @@ const dynamicGeometry0 = multiFormGeometryDynamic( {
     radius: 0.6,
     radialSegments: 36,
     outline: φOutline0,
-    torsion: t => 5 * Math.sin( t * 0.3 ),  
+    torsion: t => 5 * Math.sin( t * 0.3 ),
+    onTop: true,
     translateX: t => 2.5 * Math.sin( t * 0.25 ),
     translateZ: t => 2.5 * Math.cos( t * 0.25 ),
     scaleY: t => 1.5 + 0.5 * Math.cos( t * 0.1 ),   
@@ -90,9 +94,21 @@ const dynamicGeometry0 = multiFormGeometryDynamic( {
 const dynamicMesh0 = new THREE.Mesh( dynamicGeometry0, material00 );
 scene.add( dynamicMesh0 );
 
+const dynamicGeometry1 = multiFormGeometryDynamic( { 
+    cover: true,
+    outline: sphereOutline,
+    torsion: t => 1.5 * Math.cos( t * 0.5 ),
+    translateX: -7,
+    translateZ: t => 6 * Math.sin( t * 0.1 ),
+} );
+
+const dynamicMesh1 = new THREE.Mesh( dynamicGeometry1, material04 );
+scene.add( dynamicMesh1 );
+
 const flatKnotGeometry = multiFormGeometryStatic( {
     radialSegments: 2,
     heightSegments: 300,
+    onTop: true,
     withBottom: false,
     withTop: false,
     centerline: flatKnotCenterline,
@@ -114,6 +130,7 @@ materials.push( material01 );
 for ( let i = 0; i < 7; i ++ ) {
 
     staticGeometries.push( multiFormGeometryStatic( {
+        onTop: true,
         withBottom : false,
         withTop : false, 
         outline: sphereOutline,
@@ -130,6 +147,7 @@ for ( let i = 0; i < 7; i ++ ) {
 
     staticGeometries.push( multiFormGeometryStatic( {
         outline: aaOutline1,
+        onTop: true,
         translateX: -4,
         translateZ: -3.5 + 1.25 * i,
         rotateZ: 1.04667 * i,
@@ -145,6 +163,7 @@ staticGeometries.push( multiFormGeometryStatic( {
     radius: 0.8,
     centerline: centerline01,
     outline: fyxz1Outline,
+    onTop: true,
     scaleY: 2,
     translateX:  4,
     translateZ: -5, 
@@ -157,6 +176,7 @@ staticGeometries.push( multiFormGeometryStatic( {
     heightSegments: 72,
     centerline: centerline02,
     outline: coneOutline,
+    onTop: true,
     shearX: 2.0,
     scaleY: 3.0,
     translateX:  4,
@@ -167,6 +187,7 @@ materials.push( material02 );
 
 staticGeometries.push( multiFormGeometryStatic( {
     outline: aaOutline3,
+    onTop: true,
     rotateX: Math.PI,
     translateX:  4.5,
     translateY:  1.1, 
@@ -177,6 +198,7 @@ materials.push( material01 );
 staticGeometries.push( multiFormGeometryStatic( {
     radius: 0.2,
     outline: aOutline,
+    onTop: true,
     scaleY: 4,
     translateX: 4.5,
     translateZ: 1.5, 
@@ -189,6 +211,7 @@ staticGeometries.push( multiFormGeometryStatic( {
     height: 1.4,
     heightSegments: 36,
     radialSegments: 36,
+    onTop: true,
     withBottom: false,
     withTop: false,
     outline: fyr3Outline,
@@ -200,6 +223,7 @@ materials.push( material01 );
 
 staticGeometries.push( multiFormGeometryStatic( {
     radius: 1.5,
+    onTop: true,
     withBottom: false,
     withTop: false,
     outline: φOutline1,
@@ -212,6 +236,7 @@ materials.push( material01 );
 staticGeometries.push( multiFormGeometryStatic( {
     radius: 0.25,
     centerline: curvedCylinder,
+    onTop: true,
     translateX: 3.5,
     translateZ: 4.5, 
 } ) );
@@ -222,6 +247,7 @@ staticGeometries.push( multiFormGeometryStatic( {
     radius: 0.8,
     radialSegments: 180,
     outline: φOutlineR,
+    onTop: true,
     translateX: 3,
     translateZ: 3, 
 } ) );
@@ -247,7 +273,10 @@ function animate( ) {
     
     t += 0.01;
     requestAnimationFrame( animate );
-    dynamicGeometry0.calculatePositions( t ) 
+    
+    dynamicGeometry0.calculatePositions( t );
+    dynamicGeometry1.calculatePositions( t );
+    
     stats.update( );
     renderer.render( scene, camera );
     

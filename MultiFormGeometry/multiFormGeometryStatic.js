@@ -3,19 +3,27 @@
 
 function multiFormGeometryStatic( p ) {
     
-    //   p = { radius, height, withBottom, withTop, translateX, translateY, translateZ, 
-    //         scaleX, scaleY, scaleZ, shearX, shearZ, radialSegments, heightSegments, centerline, outline, torsion, rotateX, rotateY, rotateZ }
+    //   p = { radius, height, radialSegments, heightSegments, cover, withBottom, withTop, centerline, outline, torsion,
+    //         translateX, translateY, translateZ, scaleX, scaleY, scaleZ, shearX, shearZ, rotateX, rotateY, rotateZ }
  
     const g = new THREE.BufferGeometry( );
     
     const p2i = Math.PI * 2;
     const φ = j => p2i * j / rs; // j === rs => full circle
+    const φc = j => -Math.PI + φ( j );
     
     const r = p.radius || 0.5;
     const h = p.height || 1.0;
+        
+    const rs = p.radialSegments || 18;
+    let hs = p.heightSegments || 18;
     
-    const wb = p.withBottom !== undefined ? p.withBottom : true;
-    const wt = p.withTop !== undefined ? p.withTop : true;
+    const cover = p.cover || false;
+    
+    const wb = p.withBottom !== undefined && !cover && rs > 2 ? p.withBottom : ( !cover && rs > 2 ? true : false );
+    const wt = p.withTop !== undefined && !cover && rs > 2 ? p.withTop : ( !cover && rs > 2 ? true : false );
+    
+    const onTop = p.onTop || false; // if true, bottom on xz plane
     
     const trX = p.translateX || 0.0;
     const trY = p.translateY || 0.0;
@@ -31,9 +39,6 @@ function multiFormGeometryStatic( p ) {
     const rotX = p.rotateX || 0;
     const rotY = p.rotateY || 0;
     const rotZ = p.rotateZ || 0;
-    
-    const rs = p.radialSegments || 18;
-    let hs = p.heightSegments || 18;
     
     const rss = rs + 1;
     let hss = hs + 1; // can be overwritten
@@ -307,10 +312,19 @@ function multiFormGeometryStatic( p ) {
             const cZ = centerline( ihs ).z;
             
             for ( let j = 0; j < rss; j ++ ) { // radial
-                
+            
                 x =  r * fx[ i ][ j ] * scX * Math.cos( φ( j ) );
-                y =  h * fh[ i ][ j ] * scY; 
+                y =  h * fh[ i ][ j ] * scY;
                 z = -r * fz[ i ][ j ] * scZ * Math.sin( φ( j ) );
+ 
+                if ( cover ) {
+                    
+                    z = Math.sqrt( x * x + z * z ) - r * fx[ i ][ 0 ] * scX;
+                    x = r * fx[ i ][ j ] * scX * φc( j ); // center x
+                    
+                }
+                
+                if ( !onTop ) y -= h * fh[ hs ][ j ] * scY / 2; // center y
                 
                 if ( tor !== 0 ) {
                     
@@ -344,6 +358,8 @@ function multiFormGeometryStatic( p ) {
             y = fh[ 0 ][ 0 ];
             z = cZ;
             
+            if ( !onTop ) y -= h * fh[ hs ][ 0 ] * scY / 2; // center y
+            
             rotations( );
             
             x += trX;
@@ -357,6 +373,8 @@ function multiFormGeometryStatic( p ) {
                 x = cX + r * fx[ 0 ][ j ] * scX * Math.cos( φ( j ) );
                 y =          fh[ 0 ][ j ];
                 z = cZ - r * fz[ 0 ][ j ] * scZ * Math.sin( φ( j ) );
+                
+                if ( !onTop ) y -= h * fh[ hs ][ j ] * scY / 2; //  center y
                 
                 rotations( );
                 
@@ -379,6 +397,8 @@ function multiFormGeometryStatic( p ) {
             y =  h * fh[ hs ][ 0 ] * scY;
             z =  cZ + shZ;
             
+            if ( !onTop ) y -= h * fh[ hs ][ 0 ] * scY / 2; // center y
+            
             rotations( );
             
             x += trX;
@@ -392,6 +412,8 @@ function multiFormGeometryStatic( p ) {
                 x =  r * fx[ hs ][ j ] * scX * Math.cos( φ( j ) );
                 y =  h * fh[ hs ][ j ] * scY;
                 z = -r * fz[ hs ][ j ] * scZ * Math.sin( φ( j ) );
+                
+                if ( !onTop ) y -= h * fh[ hs ][ j ] * scY / 2; // center y
                 
                 if ( tor !== 0 ) {
                     

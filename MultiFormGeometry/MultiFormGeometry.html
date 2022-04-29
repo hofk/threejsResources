@@ -127,6 +127,18 @@ const materials = [];
 staticGeometries.push( multiFormGeometryStatic( { } ) ); // all parameters default
 materials.push( material01 );
 
+const box = multiFormGeometryStatic( {
+    radius: 5,
+    radialSegments: 4,
+    rotateY: Math.PI / 4,
+    translateX: 10,
+} );
+
+box.scale(  0.1, 1, 0.002 );
+staticGeometries.push( box );
+
+materials.push( material01 );
+
 for ( let i = 0; i < 7; i ++ ) {
 
     staticGeometries.push( multiFormGeometryStatic( {

@@ -3,25 +3,38 @@
 
 function multiFormGeometryDynamic( p ) {
     
-    //   p = { radius, height, radialSegments, heightSegments, cover, withBottom, withTop, onTop, centerline, outline, torsion,
-    //         translateX, translateY, translateZ, scaleX, scaleY, scaleZ, shearX, shearZ, rotateX, rotateY, rotateZ }
-    
+    //  p = { geometry2D, radius or width, height, radialSegments or widthSegments, heightSegments, cover, withBottom, withTop, onTop, 
+    //    centerline, outline, torsion, translateX, translateY, translateZ, scaleX, scaleY, scaleZ, shearX, shearZ, rotateX, rotateY, rotateZ }
+   
     const g = new THREE.BufferGeometry( );
     
     const p2i = Math.PI * 2;
     const φ = j => p2i * j / rs; // j === rs => full circle
     const φc = j => -Math.PI + φ( j );
-        
-    g.r = ( typeof p.radius === 'number' ? ( x => p.radius ) : p.radius ) || ( x => 0.5 );
+    
+    const g2D = p.geometry2D || false;
+    
+    g.r = ( typeof p.radius === 'number' ? ( x => p.radius ) : p.radius ) || ( x => 0.5 );  // 3D
+    
+    if ( g2D ) { // 2D  w -> r
+    
+        g.r = g2D ? ( p.width !== undefined ? ( typeof p.width  === 'number' ? ( x => p.width ) : p.width ) : ( x => 1.0 ) ) : g.r; 
+    
+    }
+    
     g.h = ( typeof p.height === 'number' ? ( x => p.height ) : p.height ) || ( x => 1.0 );
     
-    const rs = p.radialSegments || 18;
+    let rs = p.radialSegments || 18;
+    rs = p.widthSegments !== undefined ? p.widthSegments : rs;
     let hs = p.heightSegments || 18;
     
     const cover = p.cover || false;
     
-    const wb = p.withBottom !== undefined && !cover && rs > 2 ? p.withBottom : ( !cover && rs > 2 ? true : false );
-    const wt = p.withTop !== undefined && !cover && rs > 2 ? p.withTop : ( !cover && rs > 2 ? true : false );
+    let wb = p.withBottom !== undefined && !cover && rs > 2 ? p.withBottom : ( !cover && rs > 2 ? true : false );
+    let wt = p.withTop !== undefined && !cover && rs > 2 ? p.withTop : ( !cover && rs > 2 ? true : false );
+    
+    wb = g2D ? false : wb;
+    wt = g2D ? false : wt;
     
     const onTop = p.onTop || false; // if true, bottom on xz plane
     
@@ -130,7 +143,7 @@ function multiFormGeometryDynamic( p ) {
                 
                 const ihs = i / hs;           
                 
-                if ( outline ( 0 ).r  !== undefined ) {  // factor for radius  
+                if ( outline ( 0 ).r  !== undefined ) {  // factor for radius or  2D width  
                     
                     for ( let j = 0; j < rss; j ++ ) { //  j === rs => φ( j ) === 2*PI full circle
                     
@@ -140,6 +153,15 @@ function multiFormGeometryDynamic( p ) {
                  
                     }
                     
+                } else  if  ( outline ( 0 ).w  !== undefined   )  {  //  factor for width  2D 
+                
+                    for ( let j = 0; j < rss; j ++ ) {
+                    
+                        fx[ i ].push( outline( ihs ).w );
+                        fh[ i ].push( outline( ihs ).y );
+                        
+                    }
+                
                 } else  if ( outline ( 0 ).x  !== undefined  && outline ( 0 ).z  !== undefined ) {  // factor for x and z
                 
                     for ( let j = 0; j < rss; j ++ ) { //  j === rs => φ( j ) === 2*PI full circle
@@ -152,7 +174,7 @@ function multiFormGeometryDynamic( p ) {
                     
                 } else { 
                     
-                    console.log( '  .r  or  ( .x  and/or  .z ) missing in outline function  ')
+                    console.log( '  .r  or .w  or  ( .x  and/or  .z ) missing in outline function  ')
                     
                 }
                 
@@ -311,16 +333,26 @@ function multiFormGeometryDynamic( p ) {
             const cX = centerline( ihs ).x;
             const cZ = centerline( ihs ).z;
             
-            for ( let j = 0; j < rss; j ++ ) { // radial
-            
-                x =  g.r( t ) * fx[ i ][ j ] * g.scX( t ) * Math.cos( φ( j ) );
-                y =  g.h( t ) * fh[ i ][ j ] * g.scY( t ); 
-                z = -g.r( t ) * fz[ i ][ j ] * g.scZ( t ) * Math.sin( φ( j ) );
+            for ( let j = 0; j < rss; j ++ ) { // radial / width
                 
-                if ( cover ) {
+                if( g2D ) { // 2D Geometry
                     
-                    z = Math.sqrt( x * x + z * z ) - g.r( t ) * fx[ i ][ 0 ] * g.scX( t );
-                    x = g.r( t ) * fx[ i ][ j ] * g.scX( t ) * φc( j ); // center x
+                     x = g.r( t ) * fx[ i ][ j ] * ( j - rs / 2 ) / rs  * g.scX( t );
+                     y = g.h( t ) * fh[ i ][ j ] * g.scY( t );    
+                     z = 0; 
+                        
+                } else  { // 3D geometry
+                    
+                    x =  g.r( t ) * fx[ i ][ j ] * g.scX( t ) * Math.cos( φ( j ) );
+                    y =  g.h( t ) * fh[ i ][ j ] * g.scY( t ); 
+                    z = -g.r( t ) * fz[ i ][ j ] * g.scZ( t ) * Math.sin( φ( j ) );
+                    
+                    if ( cover ) {
+                        
+                        z = Math.sqrt( x * x + z * z ) - g.r( t ) * fx[ i ][ 0 ] * g.scX( t );
+                        x = g.r( t ) * fx[ i ][ j ] * g.scX( t ) * φc( j ); // center x
+                        
+                    }
                     
                 }
                 

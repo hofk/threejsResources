@@ -20,6 +20,18 @@ function centerline02( h ) {
        
 }
 
+function centerline03( h ) { 
+    
+   return { x: 0.4 * Math.sin( h * p2i ) * Math.sqrt( h ), z: 0 };  
+       
+}
+
+function centerline04( h ) { 
+    
+   return { x: 0.5 * Math.exp( -h * 5 ) , z: 0 };  
+       
+}
+
 function  curvedCylinder( h ) { 
     
    return { x: Math.exp( -6 * h * h * h   ), z: 0 };  
@@ -74,10 +86,11 @@ const aaOutline3 = [
 // array of factors for radius per height [ 0 -> 1 ],   heightSegments result from count - 1, deviating are overwritten
 
 const aOutline = [ 1.45, 1.3, 1.2, 1.1, 1.1, 1.05, 1.0, 1.0, 1.0, 1.0, 0.0 ];
+const aOutline1 = [ 0.3, 0.1, 0.1, 1.1, 1.1, 0.8, 0.8, 0.5, 0.3, 0.01 ]
 
 // outlines defined by function ( normalized, with a possible overhang )  h [ 0 -> 1 ]  => [ 0 -> 1 ] 
 
-//  h [ 0 -> 1 ] for heightSegments  => factor for radius
+//  h [ 0 -> 1 ] for heightSegments  => factor for radius / width 2D
 const outline00 = h => h * h + 0.05;
 const outlinel01 = h => Math.pow( h, 8 ) + 0.1;
 const cylinderOutline = h => 1;
@@ -87,7 +100,7 @@ const expOutline = h =>  Math.exp( h );  //     try      Math.exp( 1 - h );     
 const sqrt4Outline = h => Math.pow( h, 1 / 4 );
 
 
-// h => height segments of different heights ( .y ), factor for radius  ( .r )
+// h => height segments of different heights ( .y ), factor for radius  ( .r ) or  width ( .w ) 2D
  
 function fyr1Outline( h ) { 
     
@@ -104,6 +117,12 @@ function fyr2Outline( h ) {
 function fyr3Outline( h ) { 
     
    return { y: 0.5 * ( 1 - 0.5 * Math.sin( 2 * pi * h ) ), r: Math.sqrt( h ) < 0.5 ?  Math.sqrt( h ) : 1 - Math.sqrt( h ) };  
+      
+}
+
+function fyw1Outline( h ) { 
+    
+   return { y: Math.sqrt( h ), w: Math.sin( pi * h )  };  // 2D
       
 }
  

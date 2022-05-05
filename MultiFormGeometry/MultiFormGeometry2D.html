@@ -1,9 +1,8 @@
 <!DOCTYPE html>
 <!-- https://discourse.threejs.org/t/multi-form-geometry/36839 -->
-<!-- for more 2D examples see   https://hofk.de/main/discourse.threejs/2022/MultiFormGeometry/MultiFormGeometry2D.html -->
 <head>
     <meta charset="utf-8">
-    <title> MultiFormGeometry </title>
+    <title> MultiFormGeometry2D </title>
     <style>	
         body { 
         margin: 0;
@@ -11,14 +10,12 @@
         }
     </style>
 </head>
-<body> _________________  use arrow keys  and r , l </body>
+<body>  </body>
 
 <script src='../js/three.139.js'></script>
 <script src='../js/OrbitControls.139.js'></script>
-<script src='../js/VertexNormalsHelper.139.js'></script>
 <script src='../js/stats.min.139.js'></script>
-<script src='../js/THREEn.139.js'></script> <!-- vertexFaceNumbersHelper -->
-
+ 
 <script src='Shapes.js'></script> <!-- uniform for multiFormGeometryStatic.js and multiFormGeometryDynamic.js -->
 <script src='multiFormGeometryStatic.js'></script> <!-- function,  definition of the static geometry -->
 <script src='multiFormGeometryDynamic.js'></script> <!-- function,  definition of the dynamic geometry -->
@@ -57,130 +54,124 @@ scene.add( gridHelper );
 const loader = new THREE.TextureLoader( );
 const texture = loader.load( 'beech.jpg' );
 const texture1 = loader.load( 'uv_grid_opengl.jpg' );
-const textureEarth = loader.load( 'earth_atmos_2048.jpg' );
 
-const material00 = new THREE.MeshPhongMaterial( { map: texture, color: 0x896215, emissive: 0xa96415, side: THREE.FrontSide, wireframe: false } );
+const material00 = new THREE.MeshPhongMaterial( { map: texture, color: 0x896215, emissive: 0xa96415, side: THREE.DoubleSide, wireframe: false } );
 const material01 = new THREE.MeshBasicMaterial( { map: texture1, side: THREE.DoubleSide, wireframe: false } );
 const material02 = new THREE.MeshPhongMaterial( { color: 0x896215, emissive: 0xa96415, side: THREE.DoubleSide, transparent: true, opacity: 0.5, wireframe: false } );
 const material03 = new THREE.MeshBasicMaterial( { color: 0x9900cc, side: THREE.FrontSide, wireframe: true } );
-const material04 = new THREE.MeshBasicMaterial( { map: textureEarth, side: THREE.DoubleSide } );
 
 // some parameters default
 
 const staticGeometry0 = multiFormGeometryStatic( {
-    radialSegments: 4,
+    geometry2D: true,
     onTop: true,
-    centerline: centerline01,
-    outline: cylinderOutline,
-    torsion: -Math.PI * 2,
-    scaleY: 6.0,
-    rotateY: Math.PI / 4,
-    translateZ: -6,
+    height: 2.5,
+    outline: aaOutline2,
+    translateZ: -3,
 } );
 
-const staticMesh0 = new THREE.Mesh( staticGeometry0, material03 );
+const staticMesh0 = new THREE.Mesh( staticGeometry0, material00 );
 scene.add( staticMesh0 );
+ 
 
 const dynamicGeometry0 = multiFormGeometryDynamic( { 
+    geometry2D: true,
     radius: 0.6,
     radialSegments: 36,
-    outline: φOutline0,
-    torsion: t => 5 * Math.sin( t * 0.3 ),
+    outline: aaOutline2,
+    torsion: t => 1.6 * Math.sin( t * 0.3 ),
     onTop: true,
     translateX: t => 2.5 * Math.sin( t * 0.25 ),
     translateZ: t => 2.5 * Math.cos( t * 0.25 ),
-    scaleY: t => 1.5 + 0.5 * Math.cos( t * 0.1 ),   
+    scaleY: t => 1.5 + 0.8 * Math.cos( t * 0.1 ),   
 } );
 
 const dynamicMesh0 = new THREE.Mesh( dynamicGeometry0, material00 );
 scene.add( dynamicMesh0 );
 
+
 const dynamicGeometry1 = multiFormGeometryDynamic( { 
-    cover: true,
-    outline: sphereOutline,
-    torsion: t => 1.5 * Math.cos( t * 0.5 ),
-    translateX: -7,
-    translateZ: t => 6 * Math.sin( t * 0.1 ),
+    geometry2D: true,
+    outline: sphereOutline, // 2D -> circle
+    scaleX: t => 0.1 + 1.5 * ( 1 + Math.sin( t * 0.5 ) ), // scaleZ has no effect! 
+    translateZ: 5,
 } );
 
-const dynamicMesh1 = new THREE.Mesh( dynamicGeometry1, material04 );
+const dynamicMesh1 = new THREE.Mesh( dynamicGeometry1, material03 );
 scene.add( dynamicMesh1 );
 
 const dynamicGeometry2 = multiFormGeometryDynamic( { 
     geometry2D: true,
-    onTop: true,
+    width: 2,
+    height: 4,
     widthSegments: 8,
-    centerline: centerline01,
-    outline:  sphereOutline,  //  2D -> circle
-    torsion: t => 6.28 * Math.cos( t * 0.5 ),
-    translateX: 7,
-    translateZ: t => 6 * Math.sin( t * 0.1 ),
-    scaleY: t => 1 + 3  * ( 1 +  Math.cos( t * 0.3 ) ),
+    centerline: centerline03,
+    onTop: true,
+    shearX: t => 5 * Math.cos( t * 0.6 ),
+    translateX: t => 5 * Math.sin( t * 0.6 ),
+    translateZ: -5,
 } );
 
 const dynamicMesh2 = new THREE.Mesh( dynamicGeometry2, material03 );
 scene.add( dynamicMesh2 );
 
-const flatKnotGeometry = multiFormGeometryStatic( {
-    geometry2D: true, widthSegments: 1, // or use only radialSegments: 2,
-    heightSegments: 300,
+const dynamicGeometry3 = multiFormGeometryDynamic( {
+    geometry2D: true,
+    height: 2,
     onTop: true,
-    withBottom: false,
-    withTop: false,
-    centerline: flatKnotCenterline,
-    outline: flatKnotOutline,
-    translateZ: 5,
+    outline: aOutline1,
+    translateX:  4.5,
+    rotateX: -0.2,
+    rotateY:  t => t * 0.6 ,
 } );
- 
-const flatKnotMesh = new THREE.Mesh( flatKnotGeometry, material03 );
-scene.add( flatKnotMesh );
 
+const dynamicMesh3 = new THREE.Mesh( dynamicGeometry3, material00 );
+scene.add( dynamicMesh3 );
+ 
 // push geometries to link
 
 const staticGeometries = [];
 const materials = [];
 
-staticGeometries.push( multiFormGeometryStatic( { } ) ); // all parameters default
+staticGeometries.push( multiFormGeometryStatic( { geometry2D: true, } ) ); // all other parameters default
 materials.push( material01 );
 
 staticGeometries.push( multiFormGeometryStatic( {
     geometry2D: true,
-    translateX: -1.2,
+    outline: coneOutline,
+    shearX: -0.5,
+    translateX: 1,
 } ) );
 
 materials.push( material01 );
 
-const box = multiFormGeometryStatic( {
-    radius: 5,
-    radialSegments: 4,
-    rotateY: Math.PI / 4,
-    translateX: 10,
-} );
-
-box.scale(  0.1, 1, 0.002 );
-staticGeometries.push( box );
+staticGeometries.push( multiFormGeometryStatic( {
+    geometry2D: true,
+    outline: coneOutline,
+    shearX: 0.5,
+    translateX: -1,
+} ) );
 
 materials.push( material01 );
 
 for ( let i = 0; i < 7; i ++ ) {
 
     staticGeometries.push( multiFormGeometryStatic( {
-        onTop: true,
-        withBottom : false,
-        withTop : false, 
+        geometry2D: true,
         outline: sphereOutline,
         translateX: -3 + i,
-        translateY: Math.sin( Math.PI * i / 6 ),
+        translateY: 1 + Math.sin( Math.PI * i / 6 ),
         translateZ: -4.5,
     } ) );
     
-    if ( i === 3 ) { materials.push( material01 ) } else { materials.push( material00 ); }; 
+     if ( i === 3 ) { materials.push( material01 ) } else { materials.push( material00 ); }; 
 
 }
 
 for ( let i = 0; i < 7; i ++ ) {
 
     staticGeometries.push( multiFormGeometryStatic( {
+        geometry2D: true,
         outline: aaOutline1,
         onTop: true,
         translateX: -4,
@@ -194,21 +185,10 @@ for ( let i = 0; i < 7; i ++ ) {
 }
 
 staticGeometries.push( multiFormGeometryStatic( {
-    //withBottom: false,
-    radius: 0.8,
-    centerline: centerline01,
-    outline: fyxz1Outline,
-    onTop: true,
-    scaleY: 2,
-    translateX:  4,
-    translateZ: -5, 
-} ) );
-
-materials.push( material01 );
-
-staticGeometries.push( multiFormGeometryStatic( {
-    radius: 1.2,
-    heightSegments: 72,
+    geometry2D: true,
+    width: 1.5,
+    widthSegments: 16,
+    heightSegments: 144,
     centerline: centerline02,
     outline: coneOutline,
     onTop: true,
@@ -218,88 +198,51 @@ staticGeometries.push( multiFormGeometryStatic( {
     translateZ: -2.5, 
 } ) );
 
-materials.push( material02 );
+materials.push( material03 );
 
 staticGeometries.push( multiFormGeometryStatic( {
-    outline: aaOutline3,
+    geometry2D: true,
+    width: 1.1,
+    height: 1.4,
     onTop: true,
-    rotateX: Math.PI,
-    translateX:  4.5,
-    translateY:  1.1, 
-} ) );
-
-materials.push( material01 );
-
-staticGeometries.push( multiFormGeometryStatic( {
-    radius: 0.2,
-    outline: aOutline,
-    onTop: true,
-    scaleY: 4,
+    outline: fyw1Outline,
     translateX: 4.5,
     translateZ: 1.5, 
-} ) );
-
-materials.push( material01 );
-
-staticGeometries.push( multiFormGeometryStatic( {
-    radius: 1.0,
-    height: 1.4,
-    heightSegments: 36,
-    radialSegments: 36,
-    onTop: true,
-    withBottom: false,
-    withTop: false,
-    outline: fyr3Outline,
-    translateX: 4.5,
-    translateZ: 2.5, 
-} ) );
-
-materials.push( material01 );
-
-staticGeometries.push( multiFormGeometryStatic( {
-    radius: 1.5,
-    onTop: true,
-    withBottom: false,
-    withTop: false,
-    outline: φOutline1,
-    translateX: 4.5,
-    translateZ: 3.5, 
-} ) );
-
-materials.push( material01 );
-
-staticGeometries.push( multiFormGeometryStatic( {
-    radius: 0.25,
-    centerline: curvedCylinder,
-    onTop: true,
-    translateX: 3.5,
-    translateZ: 4.5, 
 } ) );
 
 materials.push( material03 );
 
 staticGeometries.push( multiFormGeometryStatic( {
-    radius: 0.8,
-    radialSegments: 180,
-    outline: φOutlineR,
+    geometry2D: true,
+    outline: paraboloidOutline,
+    centerline: centerline04,
     onTop: true,
-    translateX: 3,
+    translateX: 4,
     translateZ: 3, 
 } ) );
 
-materials.push( material00 );
+materials.push( material03 );
+
+staticGeometries.push( multiFormGeometryStatic( {
+    geometry2D: true,
+    width: 0.2,
+    widthSegments: 1,
+    centerline: centerline04,
+    onTop: true,
+    scaleY: 1.4,
+    translateX: 4.0,
+    translateZ: 4.5, 
+} ) );
+
+materials.push( material03 );
+ 
 
 const linkedStaticGeometry = link( staticGeometries );
 
 const staticMesh = new THREE.Mesh( linkedStaticGeometry, materials );
 scene.add( staticMesh );
-
-const helper = vertexFaceNumbersHelper( camera, staticMesh0, 1, 0.05, 0x1144ff );  // from THREEn.js, up to 3 digits
-const vertexNormalsHelper = new THREE.VertexNormalsHelper( staticMesh0, 0.15, 0x000000 );
-scene.add( vertexNormalsHelper );
-
+ 
 let t = 0;
-let rot = 0;
 animate( );
 
 //...........................................................
@@ -312,34 +255,12 @@ function animate( ) {
     dynamicGeometry0.calculatePositions( t );
     dynamicGeometry1.calculatePositions( t );
     dynamicGeometry2.calculatePositions( t );
+    dynamicGeometry3.calculatePositions( t );
     
     stats.update( );
     renderer.render( scene, camera );
     
 }
-
-document.addEventListener('keydown', function( e ) {
-    
-    if ( e.keyCode === 37 ) staticMesh.position.x -= 0.1; // arrow keys
-    if ( e.keyCode === 38 ) staticMesh.position.y += 0.1;
-    if ( e.keyCode === 39 ) staticMesh.position.x += 0.1;
-    if ( e.keyCode === 40 ) staticMesh.position.y -= 0.1;
-    
-    if ( e.keyCode === 76 ) { // l left 
-        
-        rot +=0.03;
-        staticMesh.rotation.z = rot;
-        
-    }
-    
-    if ( e.keyCode === 82 ) { // r right
-        
-        rot -=0.03;
-        staticMesh.rotation.z = rot;
-        
-    }
-    
-} );
 
 </script>
 </html>

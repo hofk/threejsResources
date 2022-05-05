@@ -3,8 +3,8 @@
 
 function multiFormGeometryStatic( p ) {
     
-    //   p = { radius, height, radialSegments, heightSegments, cover, withBottom, withTop, onTop, centerline, outline, torsion,
-    //         translateX, translateY, translateZ, scaleX, scaleY, scaleZ, shearX, shearZ, rotateX, rotateY, rotateZ }
+    //  p = { geometry2D, radius or width, height, radialSegments or widthSegments, heightSegments, cover, withBottom, withTop, onTop, 
+    //    centerline, outline, torsion, translateX, translateY, translateZ, scaleX, scaleY, scaleZ, shearX, shearZ, rotateX, rotateY, rotateZ }
  
     const g = new THREE.BufferGeometry( );
     
@@ -12,16 +12,29 @@ function multiFormGeometryStatic( p ) {
     const φ = j => p2i * j / rs; // j === rs => full circle
     const φc = j => -Math.PI + φ( j );
     
-    const r = p.radius || 0.5;
+    const g2D = p.geometry2D || false;
+    
+    let r = p.radius || 0.5; // 3D
+    
+    if ( g2D ) { // 2D  w -> r
+    
+        r = p.width !== undefined ? p.width : 1.0;
+        
+    }
+    
     const h = p.height || 1.0;
         
-    const rs = p.radialSegments || 18;
+    let rs = p.radialSegments || 18;
+    rs = p.widthSegments !== undefined ? p.widthSegments : rs;
     let hs = p.heightSegments || 18;
     
     const cover = p.cover || false;
     
-    const wb = p.withBottom !== undefined && !cover && rs > 2 ? p.withBottom : ( !cover && rs > 2 ? true : false );
-    const wt = p.withTop !== undefined && !cover && rs > 2 ? p.withTop : ( !cover && rs > 2 ? true : false );
+    let wb = p.withBottom !== undefined && !cover && rs > 2 ? p.withBottom : ( !cover && rs > 2 ? true : false );
+    let wt = p.withTop !== undefined && !cover && rs > 2 ? p.withTop : ( !cover && rs > 2 ? true : false );
+    
+    wb = g2D ? false : wb;
+    wt = g2D ? false : wt;
     
     const onTop = p.onTop || false; // if true, bottom on xz plane
     
@@ -130,7 +143,7 @@ function multiFormGeometryStatic( p ) {
                 
                 const ihs = i / hs;
                             
-                if ( outline ( 0 ).r  !== undefined ) {  // factor for radius  
+                if ( outline ( 0 ).r  !== undefined ) {  // factor for radius
                     
                     for ( let j = 0; j < rss; j ++ ) { //  j === rs => φ( j ) === 2*PI full circle
                     
@@ -140,6 +153,15 @@ function multiFormGeometryStatic( p ) {
                  
                     }
                     
+                } else  if  ( outline ( 0 ).w  !== undefined   )  {  //  factor for width  2D 
+                
+                    for ( let j = 0; j < rss; j ++ ) {
+                    
+                        fx[ i ].push( outline( ihs ).w );
+                        fh[ i ].push( outline( ihs ).y );
+                        
+                    }
+                
                 } else  if ( outline ( 0 ).x  !== undefined  && outline ( 0 ).z  !== undefined ) {  // factor for x and z
                 
                     for ( let j = 0; j < rss; j ++ ) { //  j === rs => φ( j ) === 2*PI full circle
@@ -152,7 +174,7 @@ function multiFormGeometryStatic( p ) {
                     
                 } else { 
                     
-                    console.log( '  .r  or  ( .x  and/or  .z ) missing in outline function  ')
+                    console.log( '  .r  or .w  or ( .x  and/or  .z ) missing in outline function  ')
                     
                 }
                 
@@ -311,16 +333,26 @@ function multiFormGeometryStatic( p ) {
             const cX = centerline( ihs ).x;
             const cZ = centerline( ihs ).z;
             
-            for ( let j = 0; j < rss; j ++ ) { // radial
-            
-                x =  r * fx[ i ][ j ] * scX * Math.cos( φ( j ) );
-                y =  h * fh[ i ][ j ] * scY;
-                z = -r * fz[ i ][ j ] * scZ * Math.sin( φ( j ) );
- 
-                if ( cover ) {
+            for ( let j = 0; j < rss; j ++ ) { // radial / width
+                
+                if( g2D ) { // 2D Geometry
                     
-                    z = Math.sqrt( x * x + z * z ) - r * fx[ i ][ 0 ] * scX;
-                    x = r * fx[ i ][ j ] * scX * φc( j ); // center x
+                    x = r * fx[ i ][ j ] * ( j - rs / 2 ) / rs * scX; 
+                    y = h * fh[ i ][ j ] * scY;
+                    z = 0;                    
+                    
+                } else  { // 3D geometry
+                
+                    x =  r * fx[ i ][ j ] * scX * Math.cos( φ( j ) );
+                    y =  h * fh[ i ][ j ] * scY;
+                    z = -r * fz[ i ][ j ] * scZ * Math.sin( φ( j ) );
+    
+                    if ( cover ) { // unroll cover
+                        
+                        z = Math.sqrt( x * x + z * z ) - r * fx[ i ][ 0 ] * scX;
+                        x = r * fx[ i ][ j ] * scX * φc( j ); // center x
+                        
+                    }
                     
                 }
                 

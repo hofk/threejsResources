@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-update-tubegeometry-geometry-based-in-linecurve-modifications/40854/14 -->
+<!-- see also  https://hofk.de/main/discourse.threejs/2022/DynamicTubeGeometry/DynamicTubeGeometry.html  -  ... /40854/8 -->
+<head>
+	<title> DynamicTubeGeometryCaps </title>
+	<meta charset="utf-8" />
+	<style>
+		body{
+		overflow: hidden;
+		margin: 0;
+		}
+	</style>
+</head>
+
+<body></body>
+
+<script type="module">
+
+// @author hofk
+
+import * as THREE from "../jsm/three.module.140.js";
+import { OrbitControls } from "../jsm/OrbitControls.140.js";
+ 
+const scene = new THREE.Scene( );
+const camera = new THREE.PerspectiveCamera( 55, innerWidth / innerHeight, 0.01, 1000 );
+camera.position.set( -10, 8, 16 );
+const renderer = new THREE.WebGLRenderer( );
+renderer.setSize( innerWidth, innerHeight );
+renderer.setClearColor( 0xdedede );
+document.body.appendChild(renderer.domElement);
+
+const light = new THREE.AmbientLight( 0x404040, 1.2 ); // soft white light
+scene.add( light );
+
+const pointLight1 = new THREE.PointLight( 0xffffff, 1.1 );
+pointLight1.position.set( -2, 10, 5 );
+scene.add( pointLight1 );
+
+new  OrbitControls( camera, renderer.domElement );
+
+scene.add( new THREE.GridHelper( 20, 20 ) );
+ 
+const materials = [
+  new THREE.MeshBasicMaterial( { side: THREE.FrontSide, map: new THREE.TextureLoader( ).load( 'uv_grid_opengl.jpg' ), wireframe: false } ),
+  new THREE.MeshBasicMaterial( { side: THREE.DoubleSide, map: new THREE.TextureLoader( ).load( 'sunflower.png' ) } ),
+  new THREE.MeshBasicMaterial( { side: THREE.FrontSide, map: new THREE.TextureLoader( ).load( 'uv_grid_opengl.jpg' ), wireframe: false } ),
+  // new THREE.MeshBasicMaterial( { side: THREE.DoubleSide, map: new THREE.TextureLoader( ).load( 'dahlia.jpg' ) } ),
+]
+
+//                               radius, radialSegments, heightSegments, withTop, withBottom 
+const ctGeo = DynamicTubeGeometry( 0.4, 12, 72, true, true );
+const ctMesh =  new THREE.Mesh( ctGeo, materials );
+scene.add ( ctMesh );
+
+let p2y = 3;
+
+let points = [ new THREE.Vector3( 3,7,6 ), new THREE.Vector3( 2,5,6 ), new THREE.Vector3( 1,p2y,4 ), new THREE.Vector3( 0,1,2 ), new THREE.Vector3( -0.2,-1,0 )];
+
+ctGeo.morph( points );
+vertexFaceNumbersHelper( camera, ctMesh, 1, 0.02, 0x0044aa ); 
+
+let t = 0;
+animate( );
+
+// ---------------------------------
+
+function animate( ) {
+     
+	requestAnimationFrame( animate );
+    t += 0.05;
+    points[ 2 ].y = p2y * 0.25 * Math.sin( t );
+    points[ 0 ].z = 0.8 * Math.cos( t );
+    ctGeo.morph( points );
+	renderer.render( scene, camera );
+	
+}
+
+function DynamicTubeGeometry( radius, radialSegments, heightSegments, withTop, withBottom ) {
+
+	const g = new THREE.BufferGeometry( );
+    
+    g.radius = radius;
+    g.heightSegments = heightSegments;
+    g.radialSegments = radialSegments;
+    
+	let indices = [];
+	let uvs = [];
+	
+	let index = 0;
+	let indexArray = [];
+	let groupStart = 0; 
+	
+	let groupCount = 0;
+	
+	for ( let y = 0; y <= heightSegments; y ++ ) {
+		
+		let indexRow = [];
+		
+		let v = y / heightSegments;
+
+		for ( let x = 0; x <= radialSegments; x ++ ) {
+			
+			uvs.push( x / radialSegments, 1 - v );
+			indexRow.push( index ++ );
+			
+		}
+        
+		indexArray.push( indexRow );
+		
+	}
+	
+	let a, b, c, d;
+	
+	for ( let i = 0; i < radialSegments; i ++ ) {
+		
+		for ( let j = 0; j < heightSegments; j ++ ) {
+			
+			a = indexArray[ j ][ i ];
+			b = indexArray[ j + 1 ] [ i ];
+			c = indexArray[ j + 1 ][ i + 1 ];
+			d = indexArray[ j ] [ i + 1 ];
+			
+			indices.push( a, b, d );
+			indices.push( b, c, d );
+			
+			groupCount += 6;
+			
+		}
+		
+	}
+	
+	g.addGroup( groupStart, groupCount, 0 );
+	
+	groupStart += groupCount;
+	
+	let verticesCount = ( radialSegments + 1 ) * ( heightSegments + 1 )
+	
+    let centerIndexTop, centerIndexBottom;
+    
+	if ( withTop ) {
+		
+		let groupCount = 0;
+		
+		uvs.push( 0.5, 0.5 );
+		
+		centerIndexTop = index;
+        const c = centerIndexTop;
+        
+		for ( let x = 1; x <= radialSegments; x ++ ) {
+            
+			const i = centerIndexTop + x;
+
+            indices.push( i, i + 1, c );
+
+			groupCount += 3;
+            
+            index ++;
+			
+		}
+        
+		g.addGroup( groupStart, groupCount, 1 );  // 1 top material
+		
+		groupStart += groupCount;
+		
+		verticesCount += radialSegments + 2; // with center
+        
+        for ( let x = 0; x <= radialSegments; x ++ ) {
+            
+            uvs.push( 0.5 * ( 1 + Math.sin( x / radialSegments * Math.PI * 2 ) ) );
+            uvs.push( 1 - 0.5 * ( 1 + Math.cos( x / radialSegments * Math.PI * 2 ) ) );
+             
+		}
+        
+        index ++; // for center top
+        
+	}
+       
+	if ( withBottom ) {
+		
+		let groupCount = 0;
+		
+		uvs.push( 0.5, 0.5 );
+
+		centerIndexBottom = ++ index; 
+        
+		const c = centerIndexBottom;
+        
+		for ( let x = 1; x <= radialSegments; x ++ ) {
+			
+			const i = centerIndexBottom + x;
+            
+            indices.push( i + 1, i, c );
+       
+			groupCount += 3;
+
+           index ++;
+           
+		}
+		
+		g.addGroup( groupStart, groupCount, 2 );  // 2 bottom material
+		
+		groupStart += groupCount;
+		
+		verticesCount += radialSegments + 2; // with center
+        
+        for ( let x = 0; x <= radialSegments; x ++ ) {
+            
+            uvs.push( 1 - 0.5 * ( 1 + Math.sin( x / radialSegments * Math.PI * 2 ) ) );
+            uvs.push( 1 - 0.5 * ( 1 + Math.cos( x / radialSegments * Math.PI * 2 ) ) );
+            
+        }
+        
+	}    
+  
+	g.setIndex( new THREE.BufferAttribute( new Uint32Array( indices ), 1 ) );
+	g.setAttribute( 'position', new THREE.BufferAttribute( new Float32Array( verticesCount * 3 ), 3 ) );
+	g.setAttribute( 'uv', new THREE.BufferAttribute( new Float32Array( uvs ), 2 ) );
+    
+    g.morph = function( points ) { // sets the coordinate of all vertices
+        
+        g.pts = new THREE.CatmullRomCurve3( points , false ).getSpacedPoints( g.heightSegments ); // new center points
+             
+        // tangent( direction),  normal, binormal, shape in space
+        
+        let v3a = new THREE.Vector3( ); 
+        let v3b = new THREE.Vector3( );
+        
+        let tangent = new THREE.Vector3( );	
+        let normal = new THREE.Vector3( 0, 0, -1 ); // first normal to after ... 
+        let binormal = new THREE.Vector3( );
+        
+        let idx = 0;
+        
+        for( let i = 0; i <= g.heightSegments; i ++ ) {
+            
+            if ( i === 0 ) tangent.subVectors( g.pts[ 1 ], g.pts[ 0 ] );
+            if ( i > 0 && i < g.heightSegments ) tangent.subVectors( g.pts[ i + 1 ], g.pts[ i - 1 ] );
+            if ( i === g.heightSegments ) tangent.subVectors( g.pts[ i ], g.pts[ i - 1 ] );
+            
+            binormal.crossVectors( normal, tangent );
+            normal.crossVectors( tangent, binormal );
+            
+            binormal.normalize( );
+            normal.normalize( );
+                
+            for( let j = 0; j <= g.radialSegments; j ++ ) {
+            
+                // circle in space
+                v3a.addVectors( binormal.clone( ).multiplyScalar( Math.sin( Math.PI * 2 * j / g.radialSegments ) ), normal.clone( ).multiplyScalar(  Math.cos( Math.PI * 2 * j / g.radialSegments ) ) );
+                
+                v3a.multiplyScalar( g.radius );
+                
+                v3b.addVectors( g.pts[ i ], v3a );
+                
+                g.attributes.position.setXYZ( idx ++, v3b.x, v3b.y, v3b.z );
+                
+            }
+            
+        }
+        
+        idx --; // idx = ( g.radialSegments + 1 ) * ( g.heightSegments + 1 ) - 1; // last index torso
+        
+        const lastIndexTorso = idx;
+        
+        if( withTop ) {
+            
+            let x, y, z;
+            
+            g.attributes.position.setXYZ( ++ idx, g.pts[ 0 ].x, g.pts[ 0 ].y, g.pts[ 0 ].z ); // center top
+            
+            for( let j = 0; j <= g.radialSegments ; j ++ ) {
+                
+                x = g.attributes.position.getX( j );
+                y = g.attributes.position.getY( j );
+                z = g.attributes.position.getZ( j );
+                
+                g.attributes.position.setXYZ( ++ idx, x, y, z );
+                
+            }
+            
+        }
+        
+        if( withBottom ) {
+            
+            let x, y, z;
+            
+            g.attributes.position.setXYZ( ++ idx, g.pts[ g.heightSegments ].x, g.pts[ g.heightSegments ].y, g.pts[ g.heightSegments ].z ); // center bottom
+            
+            centerIndexBottom = idx;
+            
+            const idxBtm = lastIndexTorso - g.radialSegments;
+            
+            for( let j = 0; j <= g.radialSegments ; j ++ ) {
+                
+                x = g.attributes.position.getX( idxBtm + j );
+                y = g.attributes.position.getY( idxBtm + j );
+                z = g.attributes.position.getZ( idxBtm + j );
+                 
+                g.attributes.position.setXYZ( ++ idx, x, y, z );
+                
+            }
+            
+        }
+        
+        g.attributes.position.needsUpdate = true;
+        g.computeVertexNormals( );
+        
+    }
+     
+    return g;
+	
+}
+
+function vertexFaceNumbersHelper ( camera, mesh, mode, size, color ) {
+    
+    // mode: 0 nothing, 1 vertex, 2 face, 3 vertex & face
+    
+    const positionCount = mesh.geometry.attributes.position.count;
+    const faceCount = mesh.geometry.index.array.length / 3;
+     
+    const vertexNumbers = [];
+    const faceNumbers = [];
+    const materialDigits = new THREE.LineBasicMaterial( { color: color } );
+    const geometryDigit = [];
+    const digit = [];
+    const digitPositions = [];
+    let d100, d10, d1;      // digits
+    
+    const coordDigit = [];  // design of the digits
+    coordDigit[ 0 ] = [ 0,0, 0,9, 6,9, 6,0, 0,0 ];
+    coordDigit[ 1 ] = [ 0,6, 3,9, 3,0 ];
+    coordDigit[ 2 ] = [ 0,9, 6,9, 6,6, 0,0, 6,0 ];
+    coordDigit[ 3 ] = [ 0,9, 6,9, 6,5, 3,5, 6,5, 6,0, 0,0 ];
+    coordDigit[ 4 ] = [ 0,9, 0,5, 6,5, 3,5, 3,6, 3,0 ];
+    coordDigit[ 5 ] = [ 6,9, 0,9, 0,5, 6,5, 6,0, 0,0 ];
+    coordDigit[ 6 ] = [ 6,9, 0,9, 0,0, 6,0, 6,5, 0,5 ];
+    coordDigit[ 7 ] = [ 0,9, 6,9, 6,6, 0,0 ];
+    coordDigit[ 8 ] = [ 0,0, 0,9, 6,9, 6,5, 0,5, 6,5, 6,0, 0,0 ];
+    coordDigit[ 9 ] = [ 6,5, 0,5, 0,9, 6,9, 6,0, 0,0 ];
+    
+    for ( let i = 0; i < 10; i ++ ) {
+        
+        geometryDigit[ i ] = new THREE.BufferGeometry();
+        
+        digitPositions[ i ] =  new Float32Array( coordDigit[ i ].length / 2 * 3 );
+        geometryDigit[ i ].setAttribute( 'position', new THREE.BufferAttribute( digitPositions[ i ], 3 ) );
+        
+        for ( let j = 0; j < coordDigit[ i ].length/ 2; j ++ ) {
+            
+            digitPositions[ i ][ j * 3 ] =  0.1 * size * coordDigit[ i ][ 2 * j ];
+            digitPositions[ i ][ j * 3 + 1 ] = 0.1 * size * coordDigit[ i ][ 2 * j + 1 ];
+            digitPositions[ i ][ j * 3 + 2 ] = 0;
+            
+        }
+        
+        digit[ i ] = new THREE.Line( geometryDigit[ i ], materialDigits );
+        
+    }  
+    
+    const posArray = mesh.geometry.attributes.position.array;
+    const indArray = mesh.geometry.index.array;
+    
+    let x, y, z;
+
+    if ( mode === 1 || mode === 3 ) {
+        
+        for ( let i = 0; i < positionCount ; i ++ ) {
+            
+            // number on board, up to three digits are pinned there
+            
+            const board = new THREE.Mesh( new THREE.BufferGeometry( ) );
+            
+            numbering( board, i ); // numbering the vertices, hundreds ...
+            
+            vertexNumbers.push( board );    // place the table in the vertex numbering data field
+            mesh.add( vertexNumbers[ i ] );
+            
+        }
+        
+        for( let n = 0; n < vertexNumbers.length; n ++ ) {
+            
+            const n3 = 3 * n; 
+            vertexNumbers[ n ].position.set( posArray[ n3 ], posArray[ n3  + 1 ], posArray[ n3  + 2 ] );
+            
+        }
+        
+    }
+    
+    if ( mode === 2 || mode === 3 ) {
+    
+        for ( let i = 0; i < faceCount ; i ++ ) {
+             
+            // number on board, up to three digits are pinned there
+            
+            const board = new THREE.Mesh( new THREE.BufferGeometry( ) );
+            
+            numbering( board, i  ); // numbering the faces, hundreds ...
+            
+            faceNumbers.push( board );  // place the table in the face numbering data field
+            mesh.add( faceNumbers[ i ] );    
+            
+        }
+        
+       for ( let n = 0; n < faceNumbers.length; n ++ ) {
+            
+            const n3 = 3 * n;
+            
+            x = 0;
+            x += posArray[ indArray[ n3 ] * 3 ];
+            x += posArray[ indArray[ n3 + 1 ] * 3 ];
+            x += posArray[ indArray[ n3 + 2 ] * 3 ];
+            x /= 3;
+            
+            y = 0;
+            y += posArray[ indArray[ n3 ] * 3  + 1 ];
+            y += posArray[ indArray[ n3 + 1 ] * 3 + 1 ];
+            y += posArray[ indArray[ n3 + 2 ] * 3 + 1 ];
+            y /= 3;
+            
+            z = 0;
+            z += posArray[ indArray[ n3 ] * 3  + 2 ];
+            z += posArray[ indArray[ n3 + 1 ] * 3 + 2 ];
+            z += posArray[ indArray[ n3 + 2 ] * 3 + 2 ];
+            z /= 3;
+            
+            faceNumbers[ n ].position.set( x, y, z );
+            
+        }
+        
+    }
+    
+    function numbering( board, i ) { 
+        
+        const d = i.toString( ); 
+        const n = d.length;
+   
+        if ( n === 3 ) {
+        
+            d100 = digit[ d[ 0 ] ].clone( );                      // digit for hundreds
+            board.add( d100 );                                      //  on the board ...
+            d100.position.x = -8 * 0.1 * size;                      // ... move slightly to the left
+            
+            d10 = digit[ d[ 1 ] ].clone( );                       // digit for tenth
+            board.add( d10 );                                       //  on the board
+            
+            d1 = digit[ d[ 2 ] ].clone( );                       // digit 
+            board.add( d1 );                                        //  on the board ...
+            
+        } else if (  n === 2 ) {
+            
+            d10 = digit[ d[ 0 ] ].clone( );                       // digit for tenth
+            board.add( d10 );                                       //  on the board
+            
+            d1 = digit[ d[ 1 ] ].clone( );                        // digit 
+            board.add( d1 );                                        //  on the board ...
+            
+        } else if (  n === 1 ) {
+        
+            d1 = digit[ d[ 0 ] ].clone( );                        // digit 
+            board.add( d1 );                                        //  on the board ...
+            
+        }
+        
+        d1.position.x = 8 * 0.1 * size;                         // ... move slightly to the right
+        
+    }
+     
+};
+
+</script>
+ 
+</html>

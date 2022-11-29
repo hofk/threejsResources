@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/roundedrectangle/28645 --> 
+<head>
+	<title> RectangleRounded </title>
+	<meta charset="utf-8" />
+	<style>	
+	body {  margin: 0; }
+	</style>
+</head>
+<body>
+ 
+</body>
+ 
+ <script type="module">
+ 
+// @author hofk
+ 
+import * as THREE from "../jsm/three.module.130.js";
+import { OrbitControls } from "../jsm/OrbitControls.130.js";
+ 
+const scene = new THREE.Scene( );
+const camera = new THREE.PerspectiveCamera( 55, window.innerWidth / window.innerHeight, 0.01, 10000 );
+camera.position.set( 1, 1, 6 );
+const renderer = new THREE.WebGLRenderer( { antialias: true } );
+renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setClearColor( 0xdedede, 1 );	
+const container = document.createElement( 'div' );
+document.body.appendChild( container );
+container.appendChild( renderer.domElement );
+const axesHelper = new THREE.AxesHelper( 5 );
+scene.add( axesHelper );
+
+const controls = new OrbitControls( camera, renderer.domElement );
+ 
+const loader = new THREE.TextureLoader( );
+ const material = new THREE.MeshBasicMaterial( { map: loader.load( 'uvgrid01.png' ) } );
+// const material = new THREE.MeshBasicMaterial( { color: 'black',  wireframe: true } );
+
+const width        =  5;
+const height       =  4;
+const radiusCorner =  1;
+const smoothness   = 12;
+ 
+const geometry = RectangleRounded( width, height, radiusCorner, smoothness );
+ 
+const mesh = new THREE.Mesh( geometry, material );
+scene.add( mesh );
+
+animate( );  
+
+function animate( ) {
+	
+	requestAnimationFrame( animate );
+	renderer.render( scene, camera );
+		
+}
+
+function RectangleRounded( w, h, r, s ) { // width, height, radiusCorner, smoothness
+    
+    const pi2 = Math.PI * 2;
+    const n = ( s + 1 ) * 4; // number of segments    
+    let indices = [];
+    let positions = [];
+ 	let uvs = [];   
+    let qu, sgx, sgy, x, y;
+    
+	for ( let j = 1; j < n + 1; j ++ ) indices.push( 0, j, j + 1 ); // 0 is center
+    indices.push( 0, n, 1 );   
+    positions.push( 0, 0, 0 ); // rectangle center
+    uvs.push( 0.5, 0.5 );   
+    for ( let j = 0; j < n ; j ++ ) contour( j );
+    
+    const geometry = new THREE.BufferGeometry( );
+    geometry.setIndex( new THREE.BufferAttribute( new Uint32Array( indices ), 1 ) );
+	geometry.setAttribute( 'position', new THREE.BufferAttribute( new Float32Array( positions ), 3 ) );
+	geometry.setAttribute( 'uv', new THREE.BufferAttribute( new Float32Array( uvs ), 2 ) );
+    
+    return geometry;
+    
+    function contour( j ) {
+        
+        qu = Math.trunc( 4 * j / n ) + 1 ;      // quadrant  qu: 1..4         
+        sgx = ( qu === 1 || qu === 4 ? 1 : -1 ) // signum left/right
+        sgy =  qu < 3 ? 1 : -1;                 // signum  top / bottom
+        x = sgx * ( w / 2 - r ) + r * Math.cos( pi2 * ( j - qu + 1 ) / ( n - 4 ) ); // corner center + circle
+        y = sgy * ( h / 2 - r ) + r * Math.sin( pi2 * ( j - qu + 1 ) / ( n - 4 ) );   
+ 
+        positions.push( x, y, 0 );       
+        uvs.push( 0.5 + x / w, 0.5 + y / h );       
+        
+    }
+    
+}
+
+</script>
+</html>

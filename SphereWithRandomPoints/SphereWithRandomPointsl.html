@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+ <!-- https://discourse.threejs.org/t/create-circle-with-fuzzy-edge-made-of-individual-random-particles/30150/9 -->
+<head>
+  <title> SphereWithRandomPointsl </title>
+  <meta charset="utf-8" />
+  <style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+  </style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author hofk
+
+import * as THREE from '../jsm/three.module.135.js';
+import { OrbitControls} from '../jsm/OrbitControls.135.js'
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera( 60, innerWidth / innerHeight, 0.001, 100);
+camera.position.set( 1, 1, 2 );
+let renderer = new THREE.WebGLRenderer();
+renderer.setSize(innerWidth, innerHeight);
+renderer.setClearColor( 0xdedede, 1 );
+document.body.appendChild(renderer.domElement);
+
+window.addEventListener("resize", (event) => {
+
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+  
+});
+
+let controls = new OrbitControls(camera, renderer.domElement);
+ 
+let helper = new THREE.AxesHelper( );
+scene.add( helper );
+
+const n = 25000;   // points count
+const dri = 0.07;  // radius inner difference
+const r = 0.6;     // radius main
+const dro = 0.4;   // radius outer difference 
+
+const geometry = PointsSphere( n, dri, r, dro );
+const pointsMaterial = new THREE.PointsMaterial( { size: 0.01, color: 0xff00ff } );
+const spherePoints = new THREE.Points( geometry, pointsMaterial );
+ 
+scene.add( spherePoints );
+
+renderer.setAnimationLoop( ( ) => { renderer.render(scene, camera); } );
+
+// .....................................
+
+function PointsSphere( n, dri, r, dro ) { 
+    
+     // n: points count,  dri: inner difference , r: radius main, dro: outer difference  
+    
+    const pts = [];
+   
+    for( let i = 0; i < n ; i++){
+    
+            const inout = ( Math.random( ) - 0.5 ) * 2;
+            const lim = ( inout >= 0 ? dro : dri );
+            const rand = r + Math.pow( Math.random( ), 3 ) * lim * inout;
+            
+            const θ = Math.PI * 2 * Math.random( );
+            const φ = Math.acos( 2 *  Math.random( ) - 1 );
+            
+            const ps = new THREE.Vector3( Math.cos( θ ) * Math.sin( φ ),  Math.sin( θ ) * Math.sin( φ ),  Math.cos( φ ) );
+            pts.push( ps.multiplyScalar( rand ) );
+            
+    }
+    
+    const geometry = new THREE.BufferGeometry( ).setFromPoints( pts );
+    
+    return geometry;
+    
+}
+
+</script>
+</html>

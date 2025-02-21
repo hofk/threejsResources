@@ -167,7 +167,7 @@ vec3 opLimitedRepetition(vec3 p, float s, in vec3 n)
     return q;
 } 
 
-vec3 pCheapBend(vec3 p, float k)
+vec3 opCheapBend(vec3 p, float k)
 {
     float c = cos(k*p.x);
     float s = sin(k*p.x);

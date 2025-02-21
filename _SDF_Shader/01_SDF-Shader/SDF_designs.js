@@ -24,7 +24,7 @@ SDF_designs[ 0 ] = `   // don't change this line
   dcSphRep.c = vec4(0.7, 0.8, 0.2, 1.0);
   // ...
   distCol dcBoxBend;
-  dcBoxBend.d = sdBox( pCheapBend(translateX( p, -3.7), 0.07), vec3(3.0, 0.2, 0.5));
+  dcBoxBend.d = sdBox( opCheapBend(translateX( p, -3.7), 0.07), vec3(3.0, 0.2, 0.5));
   dcBoxBend.c = vec4(0.2, 0.9, 0.3, 1.0);
   // ...
   distCol dcSphDispl;

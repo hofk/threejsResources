@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!-- https://discourse.threejs.org/t/sdfs-in-the-scene-raymarching/78355  --> 
 <head>
-  <title>01_SDF-Shader</title>
+  <title>01_SDF_Shader</title>
   <meta charset="utf-8" />
 <style>
 	body{
@@ -30,16 +30,16 @@ const renderer = new THREE.WebGLRenderer({antialias: true});
 renderer.setClearColor(0xdedede);
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
-camera.position.set(0, 2, 10);
+camera.position.set(4, 5, 10);
 const light = new THREE.AmbientLight( 0x404040, 4.5 ); // soft white light
 scene.add( light );
 const directionalLight = new THREE.DirectionalLight( 0xffffff, 4.5 );
 scene.add( directionalLight );
 const controls = new OrbitControls(camera, renderer.domElement);
-const axesHelper = new THREE.AxesHelper( 10 );
+const axesHelper = new THREE.AxesHelper( 20 );
 scene.add( axesHelper );
-const gridHelper = new THREE.GridHelper( 10, 20 );
-scene.add( gridHelper );
+//const gridHelper = new THREE.GridHelper( 20, 20 );
+//scene.add( gridHelper );
 /*
 const sphMesh = new THREE.Mesh(new THREE.SphereGeometry(1.0, 12, 12), new THREE.MeshPhongMaterial({color: 0xff0000, wireframe: true}));
 scene.add( sphMesh );
@@ -51,7 +51,7 @@ const boxParam = []; // boxes for SDFs
 //   define size and position of boxes containing the SDFs from  SDF_designs.js
 // *****************************************************************************
 //               size, pos x, pos y,  pos z
-boxParam[ 0 ] = [ 10.0,   0.0,   0.0,  0.0 ];
+boxParam[ 0 ] = [ 20.0,   0.0,   0.0,  0.0 ];
  
 
 // *****************************************************************************

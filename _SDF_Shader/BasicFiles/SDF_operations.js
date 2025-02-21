@@ -3,7 +3,7 @@
 //  .d distance     .c color, transparency
 const SDF_operations = `
  
- distCol opUnion(distCol dc1, distCol dc2) { 
+distCol opUnion(distCol dc1, distCol dc2) { 
   distCol dc;
   float d = min(dc1.d, dc2.d);
   vec4 c = d < dc2.d ? dc1.c : dc2.c; 
@@ -152,14 +152,36 @@ vec3 translateZ(vec3 p, float z) {
     return p - vec3(0.0, 0.0, z);
 }
  
- // some others
+ // others
  
-vec4 opElongate( vec3 p, vec3 h ) {
+vec4 opElongate( vec3 p, vec3 h) {
     //return vec4( p-clamp(p,-h,h), 0.0 ); // faster, but produces zero in the interior elongated box
     
     vec3 q = abs(p)-h;
     return vec4( max(q,0.0), min(max(q.x,max(q.y,q.z)),0.0) );
 }
+
+vec3 opLimitedRepetition(vec3 p, float s, in vec3 n)
+{
+    vec3 q = p - s*clamp(round(p/s),-n,n);
+    return q;
+} 
+
+vec3 pCheapBend(vec3 p, float k)
+{
+    float c = cos(k*p.x);
+    float s = sin(k*p.x);
+    mat2  m = mat2(c,-s,s,c);
+    vec3  q = vec3(m*p.xy,p.z);
+    return q;
+}
+ 
+float opDisplaceSin(vec3 p, float displace)
+{
+    return sin(displace*p.x)*sin(displace*p.y)*sin(displace*p.z);
+}
+ 
+ 
  
  `;
   

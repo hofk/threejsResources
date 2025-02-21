@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/sdfs-in-the-scene-raymarching/78355  --> 
+<head>
+  <title>01_SDF-Shader</title>
+  <meta charset="utf-8" />
+<style>
+	body{
+	overflow: hidden;
+	margin: 0;
+	}  
+ </style>
+</head>
+
+<body>
+
+</body>
+
+<script type="module">
+
+// @author hofk
+
+import * as THREE from "../../jsm/three.module.173.js";
+import { OrbitControls } from "../../jsm/OrbitControls.173.js";
+import { buildtSDFsTop, buildtSDFsBtm, vShader, fShaderTop, fShaderBtm } from "../BasicFiles/shaderParts.js";
+import { SDF_designs } from "./SDF_designs.js";
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera( 65, window.innerWidth / window.innerHeight, 0.1, 1000 );
+const renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setClearColor(0xdedede);
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+camera.position.set(0, 2, 10);
+const light = new THREE.AmbientLight( 0x404040, 4.5 ); // soft white light
+scene.add( light );
+const directionalLight = new THREE.DirectionalLight( 0xffffff, 4.5 );
+scene.add( directionalLight );
+const controls = new OrbitControls(camera, renderer.domElement);
+const axesHelper = new THREE.AxesHelper( 10 );
+scene.add( axesHelper );
+const gridHelper = new THREE.GridHelper( 10, 20 );
+scene.add( gridHelper );
+/*
+const sphMesh = new THREE.Mesh(new THREE.SphereGeometry(1.0, 12, 12), new THREE.MeshPhongMaterial({color: 0xff0000, wireframe: true}));
+scene.add( sphMesh );
+sphMesh.position.set( 0, 1.5, 0 );
+*/
+let SDF_design;
+const boxParam = []; // boxes for SDFs
+
+//   define size and position of boxes containing the SDFs from  SDF_designs.js
+// *****************************************************************************
+//               size, pos x, pos y,  pos z
+boxParam[ 0 ] = [ 10.0,   0.0,   0.0,  0.0 ];
+ 
+
+// *****************************************************************************
+
+const countSDF = Math.min( SDF_designs.length, boxParam.length);
+
+console.log ( 'countSDF', countSDF )////////////////////////////////////////////////
+const boxGeo = [];
+const box = [];
+const shaderMaterial = [];
+const camPos = [];
+
+for (let i = 0; i < countSDF; i ++ ) {
+
+    boxGeo.push( new THREE.BoxGeometry(boxParam[ i ][ 0 ], boxParam[ i ][ 0 ] , boxParam[ i ][ 0 ]) ); //size
+    SDF_design = SDF_designs[ i ]; 
+    shaderMaterial.push( new THREE.ShaderMaterial({
+        uniforms: { camPos: {value: new THREE.Vector3().copy(camera.position)}, time: { value: 0.0 } },
+        vertexShader: vShader,
+        fragmentShader: fShaderTop + SDF_design + fShaderBtm,
+        side: THREE.DoubleSide,
+        transparent: true,  // use false to see the boxes
+    }) );
+    box.push( new THREE.Mesh(boxGeo[ i ], shaderMaterial[ i ]) );  // box[ i ]with SDFs
+    scene.add(box[ i ]);
+    box[ i ].position.set(boxParam[ i ][ 1 ], boxParam[ i ][ 2 ], boxParam[ i ][ 3 ]);
+    camPos.push( new THREE.Vector3( ) );
+  
+}
+
+controls.addEventListener("change", event => {
+
+    for (let i = 0; i < countSDF; i ++ ) {
+        camPos[ i ].copy(camera.position);
+        box[ i ].worldToLocal(camPos[ i ]);
+        shaderMaterial[ i ].uniforms.camPos.value.copy(camPos[ i ]);
+    }
+    
+}, false);
+
+const clock = new THREE.Clock( );
+let t = 0.0;
+
+for (let i = 0; i < countSDF; i ++ ) {
+    camPos[ i ].copy(camera.position);
+    box[ i ].worldToLocal(camPos[ i ]);
+    shaderMaterial[ i ].uniforms.camPos.value.copy(camPos[ i ]);
+}
+
+animate();
+
+function animate() {
+
+    t = clock.getElapsedTime();
+    
+    requestAnimationFrame( animate );
+    /*
+    for (let i = 0; i < countSDF; i ++ ) {
+    
+        shaderMaterial[ i ].uniforms.time.value = t; // move SDF
+        
+    }
+    */
+    //box[ 1 ].position.set( Math.cos( 0.2 * t  )* boxParam[ 1 ][ 1 ], boxParam[ 1 ][ 2 ], boxParam[ 1 ][ 3 ] ); // move box 1
+    
+    renderer.render( scene, camera );
+} 
+ 
+</script>
+</html>

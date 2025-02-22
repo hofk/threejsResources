@@ -7,14 +7,13 @@ float dot2(in vec2 v ) { return dot(v,v); }
 
 //primitives:
 
-Circle - exact   (https://www.shadertoy.com/view/3ltSW2)
-
+//Circle - exact   (https://www.shadertoy.com/view/3ltSW2)
 float sdCircle( vec2 p, float r )
 {
     return length(p) - r;
 }
-Rounded Box - exact   (https://www.shadertoy.com/view/4llXD7 and https://www.youtube.com/watch?v=s5NGeUV2EyU)
 
+//Rounded Box - exact   (https://www.shadertoy.com/view/4llXD7 and https://www.youtube.com/watch?v=s5NGeUV2EyU)
 float sdRoundedBox( in vec2 p, in vec2 b, in vec4 r )
 {
     r.xy = (p.x>0.0)?r.xy : r.zw;
@@ -22,15 +21,15 @@ float sdRoundedBox( in vec2 p, in vec2 b, in vec4 r )
     vec2 q = abs(p)-b+r.x;
     return min(max(q.x,q.y),0.0) + length(max(q,0.0)) - r.x;
 }
-Box - exact   (https://www.youtube.com/watch?v=62-pRVZuS5c)
 
+//Box - exact   (https://www.youtube.com/watch?v=62-pRVZuS5c)
 float sdBox( in vec2 p, in vec2 b )
 {
     vec2 d = abs(p)-b;
     return length(max(d,0.0)) + min(max(d.x,d.y),0.0);
 }
-Oriented Box - exact   (https://www.shadertoy.com/view/stcfzn)
 
+//Oriented Box - exact   (https://www.shadertoy.com/view/stcfzn)
 float sdOrientedBox( in vec2 p, in vec2 a, in vec2 b, float th )
 {
     float l = length(b-a);
@@ -40,16 +39,16 @@ float sdOrientedBox( in vec2 p, in vec2 a, in vec2 b, float th )
           q = abs(q)-vec2(l,th)*0.5;
     return length(max(q,0.0)) + min(max(q.x,q.y),0.0);    
 }
-Segment - exact   (https://www.shadertoy.com/view/3tdSDj and https://www.youtube.com/watch?v=PMltMdi1Wzg)
 
+//Segment - exact   (https://www.shadertoy.com/view/3tdSDj and https://www.youtube.com/watch?v=PMltMdi1Wzg)
 float sdSegment( in vec2 p, in vec2 a, in vec2 b )
 {
     vec2 pa = p-a, ba = b-a;
     float h = clamp( dot(pa,ba)/dot(ba,ba), 0.0, 1.0 );
     return length( pa - ba*h );
 }
-Rhombus - exact   (https://www.shadertoy.com/view/XdXcRB)
 
+//Rhombus - exact   (https://www.shadertoy.com/view/XdXcRB)
 float ndot(vec2 a, vec2 b ) { return a.x*b.x - a.y*b.y; }
 float sdRhombus( in vec2 p, in vec2 b ) 
 {
@@ -58,8 +57,8 @@ float sdRhombus( in vec2 p, in vec2 b )
     float d = length( p-0.5*b*vec2(1.0-h,1.0+h) );
     return d * sign( p.x*b.y + p.y*b.x - b.x*b.y );
 }
-Isosceles Trapezoid - exact   (https://www.shadertoy.com/view/MlycD3)
 
+//Isosceles Trapezoid - exact   (https://www.shadertoy.com/view/MlycD3)
 float sdTrapezoid( in vec2 p, in float r1, float r2, float he )
 {
     vec2 k1 = vec2(r2,he);
@@ -70,8 +69,8 @@ float sdTrapezoid( in vec2 p, in float r1, float r2, float he )
     float s = (cb.x<0.0 && ca.y<0.0) ? -1.0 : 1.0;
     return s*sqrt( min(dot2(ca),dot2(cb)) );
 }
-Parallelogram - exact   (https://www.shadertoy.com/view/7dlGRf)
 
+//Parallelogram - exact   (https://www.shadertoy.com/view/7dlGRf)
 float sdParallelogram( in vec2 p, float wi, float he, float sk )
 {
     vec2 e = vec2(sk,he);
@@ -84,8 +83,8 @@ float sdParallelogram( in vec2 p, float wi, float he, float sk )
     d = min( d, vec2(dot(v,v), wi*he-abs(s)));
     return sqrt(d.x)*sign(-d.y);
 }
-Equilateral Triangle - exact   (https://www.shadertoy.com/view/Xl2yDW)
 
+//Equilateral Triangle - exact   (https://www.shadertoy.com/view/Xl2yDW)
 float sdEquilateralTriangle( in vec2 p, in float r )
 {
     const float k = sqrt(3.0);
@@ -95,8 +94,8 @@ float sdEquilateralTriangle( in vec2 p, in float r )
     p.x -= clamp( p.x, -2.0*r, 0.0 );
     return -length(p)*sign(p.y);
 }
-Isosceles Triangle - exact   (https://www.shadertoy.com/view/MldcD7)
 
+//Isosceles Triangle - exact   (https://www.shadertoy.com/view/MldcD7)
 float sdTriangleIsosceles( in vec2 p, in vec2 q )
 {
     p.x = abs(p.x);
@@ -107,8 +106,8 @@ float sdTriangleIsosceles( in vec2 p, in vec2 q )
                   vec2( dot(b,b), s*(p.y-q.y)  ));
     return -sqrt(d.x)*sign(d.y);
 }
-Triangle - exact   (https://www.shadertoy.com/view/XsXSz4)
 
+//Triangle - exact   (https://www.shadertoy.com/view/XsXSz4)
 float sdTriangle( in vec2 p, in vec2 p0, in vec2 p1, in vec2 p2 )
 {
     vec2 e0 = p1-p0, e1 = p2-p1, e2 = p0-p2;
@@ -122,8 +121,8 @@ float sdTriangle( in vec2 p, in vec2 p0, in vec2 p1, in vec2 p2 )
                      vec2(dot(pq2,pq2), s*(v2.x*e2.y-v2.y*e2.x)));
     return -sqrt(d.x)*sign(d.y);
 }
-Uneven Capsule - exact   (https://www.shadertoy.com/view/4lcBWn)
 
+//Uneven Capsule - exact   (https://www.shadertoy.com/view/4lcBWn)
 float sdUnevenCapsule( vec2 p, float r1, float r2, float h )
 {
     p.x = abs(p.x);
@@ -134,8 +133,8 @@ float sdUnevenCapsule( vec2 p, float r1, float r2, float h )
     if( k > a*h ) return length(p-vec2(0.0,h)) - r2;
     return dot(p, vec2(a,b) ) - r1;
 }
-Regular Pentagon - exact   (https://www.shadertoy.com/view/llVyWW)
 
+//Regular Pentagon - exact   (https://www.shadertoy.com/view/llVyWW)
 float sdPentagon( in vec2 p, in float r )
 {
     const vec3 k = vec3(0.809016994,0.587785252,0.726542528);
@@ -145,8 +144,8 @@ float sdPentagon( in vec2 p, in float r )
     p -= vec2(clamp(p.x,-r*k.z,r*k.z),r);    
     return length(p)*sign(p.y);
 }
-Regular Hexagon - exact
 
+//Regular Hexagon - exact
 float sdHexagon( in vec2 p, in float r )
 {
     const vec3 k = vec3(-0.866025404,0.5,0.577350269);
@@ -155,8 +154,8 @@ float sdHexagon( in vec2 p, in float r )
     p -= vec2(clamp(p.x, -k.z*r, k.z*r), r);
     return length(p)*sign(p.y);
 }
-Regular Octogon - exact   (https://www.shadertoy.com/view/llGfDG)
 
+//Regular Octogon - exact   (https://www.shadertoy.com/view/llGfDG)
 float sdOctogon( in vec2 p, in float r )
 {
     const vec3 k = vec3(-0.9238795325, 0.3826834323, 0.4142135623 );
@@ -166,8 +165,8 @@ float sdOctogon( in vec2 p, in float r )
     p -= vec2(clamp(p.x, -k.z*r, k.z*r), r);
     return length(p)*sign(p.y);
 }
-Hexagram - exact   (https://www.shadertoy.com/view/tt23RR)
 
+//Hexagram - exact   (https://www.shadertoy.com/view/tt23RR)
 float sdHexagram( in vec2 p, in float r )
 {
     const vec4 k = vec4(-0.5,0.8660254038,0.5773502692,1.7320508076);
@@ -177,8 +176,8 @@ float sdHexagram( in vec2 p, in float r )
     p -= vec2(clamp(p.x,r*k.z,r*k.w),r);
     return length(p)*sign(p.y);
 }
-Star 5 - exact   (https://www.shadertoy.com/view/3tSGDy)
 
+//Star 5 - exact   (https://www.shadertoy.com/view/3tSGDy)
 float sdStar5(in vec2 p, in float r, in float rf)
 {
     const vec2 k1 = vec2(0.809016994375, -0.587785252292);
@@ -192,8 +191,8 @@ float sdStar5(in vec2 p, in float r, in float rf)
     float h = clamp( dot(p,ba)/dot(ba,ba), 0.0, r );
     return length(p-ba*h) * sign(p.y*ba.x-p.x*ba.y);
 }
-Regular Star - exact   (https://www.shadertoy.com/view/3tSGDy)
 
+//Regular Star - exact   (https://www.shadertoy.com/view/3tSGDy)
 float sdStar( in vec2 p, in float r, in int n, in float m)
 {
     // next 4 lines can be precomputed for a given shape
@@ -208,8 +207,8 @@ float sdStar( in vec2 p, in float r, in int n, in float m)
     p += ecs*clamp( -dot(p,ecs), 0.0, r*acs.y/ecs.y);
     return length(p)*sign(p.x);
 }
-Pie - exact   (https://www.shadertoy.com/view/3l23RK)
 
+//Pie - exact   (https://www.shadertoy.com/view/3l23RK)
 float sdPie( in vec2 p, in vec2 c, in float r )
 {
     p.x = abs(p.x);
@@ -217,8 +216,8 @@ float sdPie( in vec2 p, in vec2 c, in float r )
     float m = length(p-c*clamp(dot(p,c),0.0,r)); // c=sin/cos of aperture
     return max(l,m*sign(c.y*p.x-c.x*p.y));
 }
-Cut Disk - exact   (https://www.shadertoy.com/view/ftVXRc)
 
+//Cut Disk - exact   (https://www.shadertoy.com/view/ftVXRc)
 float sdCutDisk( in vec2 p, in float r, in float h )
 {
     float w = sqrt(r*r-h*h); // constant for any given shape
@@ -228,8 +227,8 @@ float sdCutDisk( in vec2 p, in float r, in float h )
            (p.x<w) ? h - p.y     :
                      length(p-vec2(w,h));
 }
-Arc - exact   (https://www.shadertoy.com/view/wl23RK)
 
+//Arc - exact   (https://www.shadertoy.com/view/wl23RK)
 float sdArc( in vec2 p, in vec2 sc, in float ra, float rb )
 {
     // sc is the sin/cos of the arc's aperture
@@ -237,8 +236,8 @@ float sdArc( in vec2 p, in vec2 sc, in float ra, float rb )
     return ((sc.y*p.x>sc.x*p.y) ? length(p-sc*ra) : 
                                   abs(length(p)-ra)) - rb;
 }
-Ring - exact   (https://www.shadertoy.com/view/DsccDH)
 
+//Ring - exact   (https://www.shadertoy.com/view/DsccDH)
 float sdRing( in vec2 p, in vec2 n, in float r, float th )
 {
     p.x = abs(p.x);
@@ -248,8 +247,8 @@ float sdRing( in vec2 p, in vec2 n, in float r, float th )
     return max( abs(length(p)-r)-th*0.5,
                 length(vec2(p.x,max(0.0,abs(r-p.y)-th*0.5)))*sign(p.x) );
 }
-Horseshoe - exact   (https://www.shadertoy.com/view/WlSGW1)
 
+//Horseshoe - exact   (https://www.shadertoy.com/view/WlSGW1)
 float sdHorseshoe( in vec2 p, in vec2 c, in float r, in vec2 w )
 {
     p.x = abs(p.x);
@@ -260,8 +259,8 @@ float sdHorseshoe( in vec2 p, in vec2 c, in float r, in vec2 w )
     p = vec2(p.x,abs(p.y-r))-w;
     return length(max(p,0.0)) + min(0.0,max(p.x,p.y));
 }
-Vesica - exact   (https://www.shadertoy.com/view/XtVfRW)
 
+//Vesica - exact   (https://www.shadertoy.com/view/XtVfRW)
 float sdVesica(vec2 p, float w, float h)
 {
     vec3 d = 0.5*(w*w-h*h)/h;
@@ -269,8 +268,8 @@ float sdVesica(vec2 p, float w, float h)
     vec3 c = (w*p.y < d*(p.x-w)) ? vec3(0.0,w,0.0) : vec3(-d,0.0,d+h);
     return length(p-c.yx) - c.z;
 }
-Oriented Vesica - exact   (https://www.shadertoy.com/view/cs2yzG)
 
+//Oriented Vesica - exact   (https://www.shadertoy.com/view/cs2yzG)
 float sdOrientedVesica( vec2 p, vec2 a, vec2 b, float w )
 {
     float r = 0.5*length(b-a);
@@ -281,8 +280,8 @@ float sdOrientedVesica( vec2 p, vec2 a, vec2 b, float w )
     vec3 h = (r*q.x<d*(q.y-r)) ? vec3(0.0,r,0.0) : vec3(-d,0.0,d+w);
     return length( q-h.xy) - h.z;
 }
-Moon - exact   (https://www.shadertoy.com/view/WtdBRS)
 
+//Moon - exact   (https://www.shadertoy.com/view/WtdBRS)
 float sdMoon(vec2 p, float d, float ra, float rb )
 {
     p.y = abs(p.y);
@@ -293,8 +292,8 @@ float sdMoon(vec2 p, float d, float ra, float rb )
     return max( (length(p          )-ra),
                -(length(p-vec2(d,0))-rb));
 }
-Circle Cross - exact   (https://www.shadertoy.com/view/NslXDM)
 
+//Circle Cross - exact   (https://www.shadertoy.com/view/NslXDM)
 float sdRoundedCross( in vec2 p, in float h )
 {
     float k = 0.5*(h+1.0/h);
@@ -304,8 +303,8 @@ float sdRoundedCross( in vec2 p, in float h )
            sqrt(min(dot2(p-vec2(0,h)),
                     dot2(p-vec2(1,0))));
 }
-Simple Egg - exact   (https://www.shadertoy.com/view/XtVfRW)
 
+//Simple Egg - exact   (https://www.shadertoy.com/view/XtVfRW)
 float sdEgg( in vec2 p, in float ra, in float rb )
 {
     const float k = sqrt(3.0);
@@ -315,8 +314,8 @@ float sdEgg( in vec2 p, in float ra, in float rb )
             (k*(p.x+r)<p.y) ? length(vec2(p.x,  p.y-k*r)) :
                               length(vec2(p.x+r,p.y    )) - 2.0*r) - rb;
 }
-Heart - exact   (https://www.shadertoy.com/view/3tyBzV)
 
+//Heart - exact   (https://www.shadertoy.com/view/3tyBzV)
 float sdHeart( in vec2 p )
 {
     p.x = abs(p.x);
@@ -326,8 +325,8 @@ float sdHeart( in vec2 p )
     return sqrt(min(dot2(p-vec2(0.00,1.00)),
                     dot2(p-0.5*max(p.x+p.y,0.0)))) * sign(p.x-p.y);
 }
-Cross - exact exterior, bound interior   (https://www.shadertoy.com/view/XtGfzw)
 
+//Cross - exact exterior, bound interior   (https://www.shadertoy.com/view/XtGfzw) 
 float sdCross( in vec2 p, in vec2 b, float r ) 
 {
     p = abs(p); p = (p.y>p.x) ? p.yx : p.xy;
@@ -336,15 +335,15 @@ float sdCross( in vec2 p, in vec2 b, float r )
     vec2  w = (k>0.0) ? q : vec2(b.y-p.x,-k);
     return sign(k)*length(max(w,0.0)) + r;
 }
-Rounded X - exact   (https://www.shadertoy.com/view/3dKSDc)
-
+ 
+// Rounded X - exact   (https://www.shadertoy.com/view/3dKSDc)
 float sdRoundedX( in vec2 p, in float w, in float r )
 {
     p = abs(p);
     return length(p-min(p.x+p.y,w)*0.5) - r;
 }
-Polygon - exact   (https://www.shadertoy.com/view/wdBXRW)
 
+//Polygon - exact   (https://www.shadertoy.com/view/wdBXRW)
 float sdPolygon( in vec2[N] v, in vec2 p )
 {
     float d = dot(p-v[0],p-v[0]);
@@ -360,8 +359,8 @@ float sdPolygon( in vec2[N] v, in vec2 p )
     }
     return s*sqrt(d);
 }
-Ellipse - exact   (https://www.shadertoy.com/view/4sS3zz)
 
+//Ellipse - exact   (https://www.shadertoy.com/view/4sS3zz)
 float sdEllipse( in vec2 p, in vec2 ab )
 {
     p = abs(p); if( p.x > p.y ) {p=p.yx;ab=ab.yx;}
@@ -395,8 +394,8 @@ float sdEllipse( in vec2 p, in vec2 ab )
     vec2 r = ab * vec2(co, sqrt(1.0-co*co));
     return length(r-p) * sign(p.y-r.y);
 }
-Parabola - exact   (https://www.shadertoy.com/view/ws3GD7)
 
+//Parabola - exact   (https://www.shadertoy.com/view/ws3GD7)
 float sdParabola( in vec2 pos, in float k )
 {
     pos.x = abs(pos.x);
@@ -410,8 +409,8 @@ float sdParabola( in vec2 pos, in float k )
         2.0*cos(atan(r,q)/3.0)*sqrt(p);
     return length(pos-vec2(x,k*x*x)) * sign(pos.x-x);
 }
-Parabola Segment - exact   (https://www.shadertoy.com/view/3lSczz)
 
+//Parabola Segment - exact   (https://www.shadertoy.com/view/3lSczz)
 float sdParabola( in vec2 pos, in float wi, in float he )
 {
     pos.x = abs(pos.x);
@@ -427,8 +426,8 @@ float sdParabola( in vec2 pos, in float wi, in float he )
     return length(pos-vec2(x,he-x*x/ik)) * 
            sign(ik*(pos.y-he)+pos.x*pos.x);
 }
-Quadratic Bezier - exact   (https://www.shadertoy.com/view/MlKcDD)
 
+//Quadratic Bezier - exact   (https://www.shadertoy.com/view/MlKcDD)
 float sdBezier( in vec2 pos, in vec2 A, in vec2 B, in vec2 C )
 {    
     vec2 a = B - A;
@@ -466,8 +465,8 @@ float sdBezier( in vec2 pos, in vec2 A, in vec2 B, in vec2 C )
     }
     return sqrt( res );
 }
-Bobbly Cross - exact   (https://www.shadertoy.com/view/NssXWM)
 
+//Bobbly Cross - exact   (https://www.shadertoy.com/view/NssXWM)
 float sdBlobbyCross( in vec2 pos, float he )
 {
     pos = abs(pos);
@@ -485,8 +484,8 @@ float sdBlobbyCross( in vec2 pos, float he )
     vec2 z = vec2(x,he*(1.0-2.0*x*x)) - pos;
     return length(z) * sign(z.y);
 }
-Tunnel - exact   (https://www.shadertoy.com/view/flSSDy)
 
+//Tunnel - exact   (https://www.shadertoy.com/view/flSSDy)
 float sdTunnel( in vec2 p, in vec2 wh )
 {
     p.x = abs(p.x); p.y = -p.y;
@@ -499,8 +498,8 @@ float sdTunnel( in vec2 p, in vec2 wh )
     
     return (max(q.x,q.y)<0.0) ? -d : d;
 }
-Stairs - exact   (https://www.shadertoy.com/view/7tKSWt)
 
+//Stairs - exact   (https://www.shadertoy.com/view/7tKSWt)
 float sdStairs( in vec2 p, in vec2 wh, in float n )
 {
     vec2 ba = wh*n;
@@ -523,8 +522,8 @@ float sdStairs( in vec2 p, in vec2 wh, in float n )
     
     return sqrt(d)*s;
 }
-Quadratic Circle - exact   (https://www.shadertoy.com/view/Nd3cW8)
 
+//Quadratic Circle - exact   (https://www.shadertoy.com/view/Nd3cW8)
 float sdQuadraticCircle( in vec2 p )
 {
     p = abs(p); if( p.y>p.x ) p=p.yx;
@@ -549,8 +548,8 @@ float sdQuadraticCircle( in vec2 p )
     vec2 w = vec2(-t,t) + 0.75 - t*t - p;
     return length(w) * sign( a*a*0.5+b-1.5 );
 }
-Hyperbola - exact   (https://www.shadertoy.com/view/DtjXDG)
 
+//Hyperbola - exact   (https://www.shadertoy.com/view/DtjXDG)
 float sdHyberbola( in vec2 p, in float k, in float he ) // k in (0,inf)
 {
     p = abs(p);
@@ -579,8 +578,8 @@ float sdHyberbola( in vec2 p, in float k, in float he ) // k in (0,inf)
     float d = length( p-vec2(t,k/t) );
     return p.x*p.y < k ? d : -d;
 }
-Cool S - exact   (https://www.shadertoy.com/view/clVXWc)
 
+//Cool S - exact   (https://www.shadertoy.com/view/clVXWc)
 float sdfCoolS( in vec2 p )
 {
     float six = (p.y<0.0) ? -p.x : p.x;
@@ -596,8 +595,8 @@ float sdfCoolS( in vec2 p )
     float s = 2.0*p.x + aby + abs(aby+0.4) - 0.4;
     return sqrt(d) * sign(s);
 }
-Circle Wave - exact   (https://www.shadertoy.com/view/stGyzt)
 
+//Circle Wave - exact   (https://www.shadertoy.com/view/stGyzt)
 float sdCircleWave( in vec2 p, in float tb, in float ra )
 {
     tb = 3.1415927*5.0/6.0*max(tb,0.0001);

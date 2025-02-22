@@ -1,5 +1,6 @@
 // shaderParts
 
+import { define_2D_SDFs } from "./define_2D_SDFs.js";
 import { define_3D_SDFs } from "./define_3D_SDFs.js";
 import { SDF_operations } from "./SDF_operations.js";
 

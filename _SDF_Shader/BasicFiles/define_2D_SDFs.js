@@ -3,7 +3,10 @@
  
 const define_2D_SDFs = `
 
+/*// already in   define_2D_SDFs 
 float dot2(in vec2 v ) { return dot(v,v); }
+float ndot(vec2 a, vec2 b ) { return a.x*b.x - a.y*b.y; }
+*/
 
 //primitives:
 
@@ -49,7 +52,6 @@ float sdSegment( in vec2 p, in vec2 a, in vec2 b )
 }
 
 //Rhombus - exact   (https://www.shadertoy.com/view/XdXcRB)
-float ndot(vec2 a, vec2 b ) { return a.x*b.x - a.y*b.y; }
 float sdRhombus( in vec2 p, in vec2 b ) 
 {
     p = abs(p);
@@ -233,8 +235,7 @@ float sdArc( in vec2 p, in vec2 sc, in float ra, float rb )
 {
     // sc is the sin/cos of the arc's aperture
     p.x = abs(p.x);
-    return ((sc.y*p.x>sc.x*p.y) ? length(p-sc*ra) : 
-                                  abs(length(p)-ra)) - rb;
+    return ((sc.y*p.x>sc.x*p.y) ? length(p-sc*ra) : abs(length(p)-ra)) - rb;
 }
 
 //Ring - exact   (https://www.shadertoy.com/view/DsccDH)
@@ -263,7 +264,7 @@ float sdHorseshoe( in vec2 p, in vec2 c, in float r, in vec2 w )
 //Vesica - exact   (https://www.shadertoy.com/view/XtVfRW)
 float sdVesica(vec2 p, float w, float h)
 {
-    vec3 d = 0.5*(w*w-h*h)/h;
+    float d = 0.5*(w*w-h*h)/h;
     p = abs(p);
     vec3 c = (w*p.y < d*(p.x-w)) ? vec3(0.0,w,0.0) : vec3(-d,0.0,d+h);
     return length(p-c.yx) - c.z;
@@ -335,7 +336,7 @@ float sdCross( in vec2 p, in vec2 b, float r )
     vec2  w = (k>0.0) ? q : vec2(b.y-p.x,-k);
     return sign(k)*length(max(w,0.0)) + r;
 }
- 
+
 // Rounded X - exact   (https://www.shadertoy.com/view/3dKSDc)
 float sdRoundedX( in vec2 p, in float w, in float r )
 {
@@ -343,7 +344,7 @@ float sdRoundedX( in vec2 p, in float w, in float r )
     return length(p-min(p.x+p.y,w)*0.5) - r;
 }
 
-//Polygon - exact   (https://www.shadertoy.com/view/wdBXRW)
+/*/Polygon - exact   (https://www.shadertoy.com/view/wdBXRW)
 float sdPolygon( in vec2[N] v, in vec2 p )
 {
     float d = dot(p-v[0],p-v[0]);
@@ -359,6 +360,7 @@ float sdPolygon( in vec2[N] v, in vec2 p )
     }
     return s*sqrt(d);
 }
+*/
 
 //Ellipse - exact   (https://www.shadertoy.com/view/4sS3zz)
 float sdEllipse( in vec2 p, in vec2 ab )

@@ -51,7 +51,7 @@ const fShaderTop = `
     return a.x < b.x ? a : b;
   } 
   ` 
-  + define_3D_SDFs + buildtSDFsTop
+  + define_3D_SDFs + define_2D_SDFs + buildtSDFsTop
   ;
   
  // in the middle SDF_design insertion

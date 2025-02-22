@@ -3,6 +3,7 @@
 //  .d distance     .c color, transparency
 const SDF_operations = `
  
+
 distCol opUnion(distCol dc1, distCol dc2) { 
   distCol dc;
   float d = min(dc1.d, dc2.d);
@@ -179,9 +180,21 @@ vec3 opCheapBend(vec3 p, float k)
 float opDisplaceSin(vec3 p, float displace)
 {
     return sin(displace*p.x)*sin(displace*p.y)*sin(displace*p.z);
+    
 }
  
+// operations for 2D SDFs 
  
+float opExtrusion(vec3 p, float sdf2D, float h)
+{
+    vec2 w = vec2( sdf2D, abs(p.z) - h );
+  	return min(max(w.x,w.y),0.0) + length(max(w,0.0));
+}
+
+vec2 opRevolution( vec3 p, float w )
+{
+    return vec2( length(p.xz) - w, p.y );
+} 
  
  `;
   

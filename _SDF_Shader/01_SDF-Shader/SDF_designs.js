@@ -19,7 +19,6 @@ SDF_designs[ 0 ] = `   // don't change this line
   distCol dcSphRep;
   float s = 1.01;
   vec3 n = vec3( 2.0, 3.0, 1.0);
-  vec3 q = opLimitedRepetition(p, s, n );
   dcSphRep.d = sdSphere(opLimitedRepetition(rotateY(translateZ(p, -4.1), 0.25*PI), s, n), 0.5);
   dcSphRep.c = vec4(0.7, 0.8, 0.2, 1.0);
   // ...

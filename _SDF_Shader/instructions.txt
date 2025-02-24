@@ -1,4 +1,7 @@
 Instructions
+=============
+
+See https://discourse.threejs.org/t/sdfs-in-the-scene-raymarching/78355/
 
 In the file SDF_designs.js   
 you develop your designs. There is a short guide at the beginning.
@@ -51,12 +54,16 @@ you only specify the size and position parameters for the boxes that are used to
 ```
 //   define size and position of boxes containing the SDFs from  SDF_designs.js
 // *****************************************************************************
-//               size, pos x, pos y,  pos z
-boxParam[ 0 ] = [ 4.5,   4.0,   1.2,  -1.0 ];
-boxParam[ 1 ] = [ 2.5,  -1.0,   2.1,   2.0 ];
-boxParam[ 2 ] = [ 3.0,   0.0,   2.0,  -3.0 ];
+//              width, height, depth, pos x, pos y, pos z
+boxParam[ 0 ] = [  3.0,   3.0,   3.0,   0.0,   1.5,   0.0 ];
+boxParam[ 1 ] = [  3.0,   3.0,   3.0,  -3.0,   1.5,  -3.0 ];
+boxParam[ 2 ] = [  3.0,   3.0,   3.0,  -3.0,   1.5,   3.0 ];
+boxParam[ 3 ] = [  3.0,   3.0,   3.0,   3.0,   1.5,   3.0 ];
+boxParam[ 4 ] = [  3.0,   3.0,   3.0,   3.0,   1.5,  -3.0 ];
+boxParam[ 5 ] = [ 50.0,   8.0,  12.0,   0.0,   4.0, -20.0 ];
 
 // *****************************************************************************
+
 ```
 To check the values, you can vary the following line:
 

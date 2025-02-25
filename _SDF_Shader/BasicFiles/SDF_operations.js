@@ -2,7 +2,6 @@
 //  some adapted from Inigo Quilez  https://iquilezles.org/articles/distfunctions/
 //  .d distance     .c color, transparency
 const SDF_operations = `
- 
 
 distCol opUnion(distCol dc1, distCol dc2) { 
   distCol dc;
@@ -72,8 +71,60 @@ distCol opSmoothIntersection( distCol dc1, distCol dc2, float k ){
   dc.c = c;     
   return dc;
 }
+ 
+vec4 opElongate( vec3 p, vec3 h) {
+    //return vec4( p-clamp(p,-h,h), 0.0 ); // faster, but produces zero in the interior elongated box
+    
+    vec3 q = abs(p)-h;
+    return vec4( max(q,0.0), min(max(q.x,max(q.y,q.z)),0.0) );
+}
 
-// rotations and translations 
+vec3 opLimitedRepetition(vec3 p, float s, in vec3 n)
+{
+    vec3 q = p - s*clamp(round(p/s),-n,n);
+    return q;
+} 
+
+vec3 opCheapBend(vec3 p, float k)
+{
+    float c = cos(k*p.x);
+    float s = sin(k*p.x);
+    mat2  m = mat2(c,-s,s,c);
+    vec3  q = vec3(m*p.xy,p.z);
+    return q;
+}
+ 
+float opDisplaceSin(vec3 p, float displace)
+{
+    return sin(displace*p.x)*sin(displace*p.y)*sin(displace*p.z);
+    
+}
+
+float opRound( float sdf3d, float rad )
+{
+    return sdf3d - rad;
+}
+
+float opOnion( float d,  float h )
+{
+    return abs(d)-h;
+}
+
+//..................................................................
+
+
+vec3 getNormal(vec3 p) {   // Note:   different from GetNormal in shaderParts.js
+    vec2 e5 = vec2(1e-5, 0); // 
+    float d1 = (p-e5.xyy).x;
+    float d2 = (p-e5.yxy).y;
+    float d3 = (p-e5.yyx).z;
+    vec3 n = normalize(vec3(d1, d2, d3));
+    return n;
+}
+
+//..................................................................
+
+// rotations, translations, mirroring 
 
 vec3 rotateX(vec3 p, float angle) {
     float s = sin(angle);
@@ -156,37 +207,21 @@ vec3 translateZ(vec3 p, float z) {
 vec3 translateXYZ(vec3 p, vec3 q) {
     return p - q;
 }
- 
- // others
- 
-vec4 opElongate( vec3 p, vec3 h) {
-    //return vec4( p-clamp(p,-h,h), 0.0 ); // faster, but produces zero in the interior elongated box
-    
-    vec3 q = abs(p)-h;
-    return vec4( max(q,0.0), min(max(q.x,max(q.y,q.z)),0.0) );
+
+vec3 mirrorYZ(vec3 p) {
+    return vec3(-p.x, p.y, p.z);
 }
 
-vec3 opLimitedRepetition(vec3 p, float s, in vec3 n)
-{
-    vec3 q = p - s*clamp(round(p/s),-n,n);
-    return q;
-} 
+vec3 mirrorXZ(vec3 p) {
+    return vec3(p.x, -p.y, p.z);
+}
 
-vec3 opCheapBend(vec3 p, float k)
-{
-    float c = cos(k*p.x);
-    float s = sin(k*p.x);
-    mat2  m = mat2(c,-s,s,c);
-    vec3  q = vec3(m*p.xy,p.z);
-    return q;
+vec3 mirrorXY(vec3 p) {
+    return vec3(p.x, p.y, -p.z);
 }
- 
-float opDisplaceSin(vec3 p, float displace)
-{
-    return sin(displace*p.x)*sin(displace*p.y)*sin(displace*p.z);
-    
-}
- 
+
+//..........................................................
+
 // operations for 2D SDFs 
  
 float opExtrusion(vec3 p, float sdf2D, float h)

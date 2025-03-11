@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/sdfs-in-the-scene-raymarching/78355  --> 
+<head>
+  <title>06_SDF_Shader</title>
+  <meta charset="utf-8" />
+<style>
+	body{
+	overflow: hidden;
+	margin: 0;
+	}  
+ </style>
+</head>
+
+<body>
+
+</body>
+
+<script type="module">
+
+// @author hofk
+
+import * as THREE from "../../jsm/three.module.173.js";
+import { OrbitControls } from "../../jsm/OrbitControls.173.js";
+import { buildtSDFsTop, buildtSDFsBtm, vShader, fShaderTop, fShaderBtm } from "../BasicFiles/shaderParts.js";
+import { SDF_designs } from "./SDF_designs.js";
+
+THREE.Quaternion.prototype.setFromBasis = function( e1, e2, e3 ) {
+    
+    const    m11 = e1.x, m12 = e1.y, m13 = e1.z,
+            m21 = e2.x, m22 = e2.y, m23 = e2.z,
+            m31 = e3.x, m32 = e3.y, m33 = e3.z,
+            trace = m11 + m22 + m33;
+
+    if ( trace > 0 ) {
+
+        const s = 0.5 / Math.sqrt( trace + 1.0 );
+
+        this._w = 0.25 / s;
+        this._x = -( m32 - m23 ) * s;
+        this._y = -( m13 - m31 ) * s;
+        this._z = -( m21 - m12 ) * s;
+
+    } else if ( m11 > m22 && m11 > m33 ) {
+
+        const s = 2.0 * Math.sqrt( 1.0 + m11 - m22 - m33 );
+
+        this._w = ( m32 - m23 ) / s;
+        this._x = -0.25 * s;
+        this._y = -( m12 + m21 ) / s;
+        this._z = -( m13 + m31 ) / s;
+
+    } else if ( m22 > m33 ) {
+
+        const s = 2.0 * Math.sqrt( 1.0 + m22 - m11 - m33 );
+
+        this._w = ( m13 - m31 ) / s;
+        this._x = -( m12 + m21 ) / s;
+        this._y = -0.25 * s;
+        this._z = -( m23 + m32 ) / s;
+
+    } else {
+
+        const s = 2.0 * Math.sqrt( 1.0 + m33 - m11 - m22 );
+
+        this._w = ( m21 - m12 ) / s;
+        this._x = -( m13 + m31 ) / s;
+        this._y = -( m23 + m32 ) / s;
+        this._z = -0.25 * s;
+
+    }
+    
+    this._onChangeCallback();
+
+    return this;
+ 
+}
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera( 65, window.innerWidth / window.innerHeight, 0.1, 1000 );
+const renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setClearColor(0xdedede);
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+camera.position.set(5, 20, 50);
+const light = new THREE.AmbientLight( 0x404040, 4.5 ); // soft white light
+scene.add( light );
+const directionalLight = new THREE.DirectionalLight( 0xffffff, 2.5 );
+directionalLight.position.set(5, 15, 50);
+scene.add( directionalLight );
+const controls = new OrbitControls(camera, renderer.domElement);
+const axesHelper = new THREE.AxesHelper( 20 );
+scene.add( axesHelper );
+/*
+const gridHelper = new THREE.GridHelper( 20, 20 );
+scene.add( gridHelper );
+*/ 
+
+let SDF_design;
+const boxParam = []; // boxes for SDFs
+
+//   define size and position of boxes containing the SDFs from  SDF_designs.js
+// *****************************************************************************
+//               width, height, depth, pos x, pos y,  pos z
+boxParam[ 0 ] = [  100,     20,    20,   0.0,   0.0,  0.0 ];
+boxParam[ 1 ] = [   10,     10,    10,   0.0,   5.0, 15.5 ];
+
+// *****************************************************************************
+
+// movement ( box 0 )
+
+const curvePointsXYZ = 
+[
+    0, 1, -2,
+   25, 3, -3,
+   43, 6,  8,
+   20, 8,  2,
+  -45, 5, -3,
+  -10, 2, -2
+]
+
+let curvePoints = [];
+
+for ( let i = 0; i < curvePointsXYZ.length; i += 3 ) {
+    curvePoints.push( new THREE.Vector3( curvePointsXYZ[ i ], curvePointsXYZ[ i + 1 ], curvePointsXYZ[ i + 2 ] ) );
+}
+
+let spline = new THREE.CatmullRomCurve3( curvePoints, true ); // true: closed
+
+let segments = 2048;
+let positions = spline.getSpacedPoints(segments - 1);
+let splineTNB = spline.computeFrenetFrames(segments - 1, true);
+
+let splineQuats = []; // for movement of models and meshes
+let shaderQuats = []; // for movement of SDFs in the shader
+const offset = new THREE.Quaternion(-0.5, -0.5, -0.5, 0.5);
+
+for ( let i = 0; i < segments; i ++ ) { // calculate quaternions from Basis TNB and BTN (different order in the shader)
+    
+   const quat = new THREE.Quaternion( ).setFromBasis( splineTNB.tangents[ i ], splineTNB.normals[ i ], splineTNB.binormals[ i ] ); 
+   splineQuats.push( quat );
+   
+   const quatSh = quat.clone().multiply(offset); 
+   shaderQuats.push( quatSh );
+     
+}
+
+// spline helper
+/*
+scene.add(
+  new THREE.Points(
+    new THREE.BufferGeometry().setFromPoints(spline.points),
+    new THREE.PointsMaterial({ size: 0.15, color: 0xffff44 })
+  )
+);
+
+scene.add(
+  new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints(positions),
+    new THREE.LineBasicMaterial({ color: 0xff44ff })
+  )
+);
+*/
+
+// DataTexture: Position, Tangent, Normal, Binormal, Quaternion
+const dataRows = 5;
+const data = new Float32Array(segments * dataRows * 4); // segments * dataRows* 4 components (RGBA)
+
+function fillData(idx, row, array) {
+    const start = (idx + segments * row) * 4;
+    data[start + 0] = array[idx].x;
+    data[start + 1] = array[idx].y;
+    data[start + 2] = array[idx].z;
+    data[start + 3] = array[idx].w;
+     
+}
+for (let i = 0; i < segments; i++) {
+    fillData(i, 0, positions);
+    fillData(i, 1, splineTNB.tangents);
+    fillData(i, 2, splineTNB.normals);
+    fillData(i, 3, splineTNB.binormals);
+    fillData(i, 4, shaderQuats);
+}
+const splineDataTexture = new THREE.DataTexture(
+    data,
+    segments,
+    dataRows,
+    THREE.RGBAFormat,
+    THREE.FloatType
+);
+splineDataTexture.wrapS = THREE.RepeatWrapping;
+splineDataTexture.needsUpdate = true;
+
+const countSDF = Math.min( SDF_designs.length, boxParam.length);
+
+const boxGeo = [];
+const box = [];
+const shaderMaterial = [];
+const camPos = [];
+
+for (let i = 0; i < countSDF; i ++ ) {
+
+    boxGeo.push( new THREE.BoxGeometry(boxParam[ i ][ 0 ], boxParam[ i ][ 1 ] , boxParam[ i ][2 ]) ); //size
+    SDF_design = SDF_designs[ i ]; 
+    shaderMaterial.push( new THREE.ShaderMaterial({
+        uniforms: {
+            time: { value: 0.0 },
+            camPos: {value: new THREE.Vector3().copy(camera.position)},
+            resolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
+            splineData: { value: splineDataTexture }
+        },
+        vertexShader: vShader,
+        fragmentShader: fShaderTop + SDF_design + fShaderBtm,
+        side: THREE.DoubleSide,
+        transparent: true,  // use false to see the boxes
+    }) );
+    box.push( new THREE.Mesh(boxGeo[ i ], shaderMaterial[ i ]) );  // box[ i ]with SDFs
+    scene.add(box[ i ]);
+    box[ i ].position.set(boxParam[ i ][ 3 ], boxParam[ i ][ 4 ], boxParam[ i ][ 5 ]);
+    camPos.push( new THREE.Vector3( ) );
+    
+}
+
+// threejs mesh
+const IcoMesh = new THREE.Mesh(
+    new THREE.IcosahedronGeometry( 1.8, 4 ),   
+    new THREE.MeshPhongMaterial({color: 0xffff44, side: THREE.FrontSide, transparent: true, opacity: 0.25, wireframe: false }));
+IcoMesh.position.set( 0, 15, -10);
+//IcoMesh.renderOrder = Infinity;
+scene.add( IcoMesh );
+ 
+
+controls.addEventListener("change", event => {
+
+    for (let i = 0; i < countSDF; i ++ ) {
+        camPos[ i ].copy(camera.position);
+        box[ i ].worldToLocal(camPos[ i ]);
+        shaderMaterial[ i ].uniforms.camPos.value.copy(camPos[ i ]);
+    }
+    
+}, false);
+
+const clock = new THREE.Clock( );
+let t = 0.0;
+
+for (let i = 0; i < countSDF; i ++ ) {
+    camPos[ i ].copy(camera.position);
+    box[ i ].worldToLocal(camPos[ i ]);
+    shaderMaterial[ i ].uniforms.camPos.value.copy(camPos[ i ]);
+}
+
+animate();
+
+function animate() {
+
+    t = clock.getElapsedTime();
+     
+    requestAnimationFrame( animate );
+     
+    for (let i = 0; i < countSDF; i ++ ) {
+    
+        shaderMaterial[ i ].uniforms.time.value = t;
+        
+    }
+    
+    renderer.render( scene, camera );
+} 
+ 
+</script>
+</html>

@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/sdfs-in-the-scene-raymarching/78355  -->
+<!-- See the templates for DataTexture: 
+        https://codepen.io/prisoner849/pen/dPyvLqQ 
+        https://hofk.de/main/threejs/_SDF_Shader/sdf-spline-data-datatexture/dist/DataTexture.html
+-->
+<html>
+<head>
+  <title>06_SDF_ShaderSolo</title>
+  <meta charset="utf-8" />
+  <style>
+    body{
+      overflow: hidden;
+      margin: 0;
+    }  
+  </style>
+</head>
+<body></body>
+<script type="module">
+
+// @author hofk
+import * as THREE from "../../jsm/three.module.173.js";
+import { OrbitControls } from "../../jsm/OrbitControls.173.js";
+import { GLTFLoader } from "../../jsm/GLTFLoader.173.js";
+THREE.Quaternion.prototype.setFromBasis = function( e1, e2, e3 ) {
+    
+    const    m11 = e1.x, m12 = e1.y, m13 = e1.z,
+            m21 = e2.x, m22 = e2.y, m23 = e2.z,
+            m31 = e3.x, m32 = e3.y, m33 = e3.z,
+            trace = m11 + m22 + m33;
+
+    if ( trace > 0 ) {
+
+        const s = 0.5 / Math.sqrt( trace + 1.0 );
+
+        this._w = 0.25 / s;
+        this._x = -( m32 - m23 ) * s;
+        this._y = -( m13 - m31 ) * s;
+        this._z = -( m21 - m12 ) * s;
+
+    } else if ( m11 > m22 && m11 > m33 ) {
+
+        const s = 2.0 * Math.sqrt( 1.0 + m11 - m22 - m33 );
+
+        this._w = ( m32 - m23 ) / s;
+        this._x = -0.25 * s;
+        this._y = -( m12 + m21 ) / s;
+        this._z = -( m13 + m31 ) / s;
+
+    } else if ( m22 > m33 ) {
+
+        const s = 2.0 * Math.sqrt( 1.0 + m22 - m11 - m33 );
+
+        this._w = ( m13 - m31 ) / s;
+        this._x = -( m12 + m21 ) / s;
+        this._y = -0.25 * s;
+        this._z = -( m23 + m32 ) / s;
+
+    } else {
+
+        const s = 2.0 * Math.sqrt( 1.0 + m33 - m11 - m22 );
+
+        this._w = ( m21 - m12 ) / s;
+        this._x = -( m13 + m31 ) / s;
+        this._y = -( m23 + m32 ) / s;
+        this._z = -0.25 * s;
+
+    }
+    
+    this._onChangeCallback();
+
+    return this;
+ 
+}
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setClearColor(0xdedede);
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+camera.position.set(3, 3, 7);
+
+const light = new THREE.AmbientLight(0x404040, 4.5); // soft white light
+scene.add(light);
+const directionalLight = new THREE.DirectionalLight(0xffffff, 2.5);
+directionalLight.position.set(5, 15, 15);
+scene.add(directionalLight);
+const controls = new OrbitControls(camera, renderer.domElement);
+const axesHelper = new THREE.AxesHelper( 3 );
+scene.add(axesHelper);
+
+const pointsCount = 5;
+const boxSize = 6;
+
+// Vertex Shader
+const vShader = `
+  varying vec3 vPosition;
+  varying vec2 vUv;
+  void main() {
+    vPosition = position;
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+  }
+`;
+
+// Fragment Shader
+const fShader = `
+uniform float time;
+uniform vec3 camPos;
+uniform vec2 resolution;
+uniform sampler2D splineData;
+
+varying vec3 vPosition;
+varying vec2 vUv;
+
+#define MAX_STEPS 250
+#define MAX_DIST 100.0
+#define SURF_DIST 1e-4
+#define PI 3.1415926
+
+// distance color
+struct distCol {
+    float d;
+    vec4 c;
+};
+
+struct quat
+{
+    float s;
+    vec3 v;
+};
+quat conjugate(quat q)
+{
+    return quat(q.s,-q.v);
+}
+quat div(quat q, float s)
+{
+    return quat(q.s / s, q.v / s);
+}
+float norm_squared(quat q)
+{
+    return q.s * q.s + dot(q.v, q.v);
+}
+//quat inverse(quat q) // ERROR: "Name of a built-in function cannot be redeclared as function"
+quat invert(quat q) // NOTE: can't reuse function name inverse here
+{
+    return div(conjugate(q), norm_squared(q));
+}
+
+quat mul(quat a, quat b)
+{
+    return quat(a.s * b.s - dot(a.v, b.v), a.s * b.v + b.s * a.v + cross(a.v, b.v));
+}
+ 
+vec3 rotate(quat q, vec3 p) // NOTE: order of parameters copies order of applying rotation matrix: M v
+{
+    return mul(mul(q, quat(0.0, p)), invert(q)).v; // NOTE: in case of unit-quaternion reciprocal can be replaced by conjugate
+}
+ 
+vec3 rotate(float angle, vec3 axis, vec3 point) // NOTE: axis must be unit!
+{
+    float c = cos(angle);
+    float s = sin(angle);
+    return c * point + s * cross(axis, point) + (1.0 - c) * (dot(point, axis) * axis); // Rodrigues' Rotation Formula
+}
+
+vec3 rotateZ(vec3 p, float angle) {
+    float s = sin(angle);
+    float c = cos(angle);
+    return vec3(
+        p.x * c - p.y * s,
+        p.x * s + p.y * c,
+        p.z
+    );
+}
+vec3 rotateX(vec3 p, float angle) {
+    float s = sin(angle);
+    float c = cos(angle);
+    return vec3(
+        p.x,
+        p.y * c - p.z * s,
+        p.y * s + p.z * c
+    );
+}
+ 
+// ... SDF ........................................
+
+float sdVerticalCappedCylinder( vec3 p, float h, float r )
+{
+  vec2 d = abs(vec2(length(p.xz),p.y)) - vec2(r,h);
+  return min(max(d.x,d.y),0.0) + length(max(d,0.0));
+}
+float sdCapsule( vec3 p, vec3 a, vec3 b, float r )
+{
+  vec3 pa = p - a, ba = b - a;
+  float h = clamp( dot(pa,ba)/dot(ba,ba), 0.0, 1.0 );
+  return length( pa - ba*h ) - r;
+}
+distCol opUnion(distCol dc1, distCol dc2) { 
+  distCol dc;
+  float d = min(dc1.d, dc2.d);
+  vec4 c = d < dc2.d ? dc1.c : dc2.c; 
+  dc.d = d;
+  dc.c = c;     
+  return dc;
+}
+
+vec3 translateXYZ(vec3 p, vec3 q) {
+    return p - q;
+}
+//................................................
+
+distCol GetDist(vec3 p) {
+    float t = mod(time * 0.05, 1.0);
+    float vStep = 1.0 / 5.0;
+    
+    vec3 dataPosition = texture(splineData, vec2(t, vStep * 0.5)).xyz;
+    vec3 dataTangent  = texture(splineData, vec2(t, vStep * 1.5)).xyz;
+    vec3 dataNormal   = texture(splineData, vec2(t, vStep * 2.5)).xyz;
+    vec3 dataBinormal = texture(splineData, vec2(t, vStep * 3.5)).xyz;
+    vec4 dataQuaternion = texture(splineData, vec2(t, vStep * 4.5)).xyzw;
+    
+    //... SDF ...
+    quat qu;
+    
+    qu.s = dataQuaternion.w;
+    qu.v = dataQuaternion.xyz;
+    
+    distCol dcCyl;
+    dcCyl.d = sdVerticalCappedCylinder( rotate(invert(qu), translateXYZ(p, dataPosition)), 0.4, 0.04 );
+    dcCyl.c =  vec4(1.0, 0.2, 0.2, 1.0);
+    
+    float axesLength = 0.6; 
+    distCol dcCapsuleTangent;
+    dcCapsuleTangent.d = sdCapsule(p, dataPosition, dataPosition + dataTangent * axesLength, 0.03);
+    dcCapsuleTangent.c =  vec4(1.0, 1.0, 0.2, 1.0);
+    distCol dcCapsuleNormal;
+    dcCapsuleNormal.d = sdCapsule(p, dataPosition, dataPosition + dataNormal * axesLength, 0.03);
+    dcCapsuleNormal.c =  vec4(0.2, 1.0, 0.2, 1.0);
+    distCol dcCapsuleBinormal;
+    dcCapsuleBinormal.d = sdCapsule(p, dataPosition, dataPosition + dataBinormal * axesLength, 0.03);    
+    dcCapsuleBinormal.c =  vec4(0.2, 0.8, 1.0, 1.0);
+    
+    distCol dc;  // apply to reserved dc
+    dc = dcCapsuleTangent;
+    dc = opUnion(dc, dcCapsuleNormal);
+    dc = opUnion(dc, dcCapsuleBinormal);
+    
+    dc = opUnion(dc, dcCyl );
+    return dc;
+}
+
+distCol RayMarch(vec3 ro, vec3 rd) {
+    distCol dc;
+    float dO = 0.0;
+    for (int i = 0; i < MAX_STEPS; i++) {
+        vec3 p = ro + rd * dO;
+        dc = GetDist(p);
+        dO += dc.d;
+        if (dO > MAX_DIST || dc.d < SURF_DIST) break;
+    }
+    dc.d = dO;
+    return dc;
+}
+
+vec3 GetNormal(vec3 p) {
+    float d = GetDist(p).d;
+    vec2 e = vec2(SURF_DIST, 0.0);
+    float d1 = GetDist(p - e.xyy).d;
+    float d2 = GetDist(p - e.yxy).d;
+    float d3 = GetDist(p - e.yyx).d;
+    vec3 n = d - vec3(d1, d2, d3);
+    return normalize(n);
+}
+
+float GetAo(vec3 p, vec3 n) {
+    float occ = 0.0;
+    float sca = 1.0;
+    for (int i = 0; i < 5; i++) {
+        float h = 0.001 + 0.15 * float(i) / 4.0;
+        float d = GetDist(p + h * n).d;
+        occ += (h - d) * sca;
+        sca *= 0.95;
+    }
+    return clamp(1.0 - 1.5 * occ, 0.0, 1.0);
+}
+
+float GetLight(vec3 p, vec3 lPos) {
+    vec3 l = normalize(lPos - p);
+    vec3 n = GetNormal(p);
+    float dif = clamp(dot(n, l), 0.0, 1.0);
+    return dif;
+}
+
+void main() {
+    vec2 uv = vUv - 0.5;
+    vec3 ro = camPos;
+    vec3 rd = normalize(vPosition - ro);
+    distCol dc = RayMarch(ro, rd);
+    
+    if (dc.d >= MAX_DIST) {
+        gl_FragColor = vec4(0.0); // no hit
+    } else {
+        vec3 p = ro + rd * dc.d;
+        vec3 lightPos = vec3(2.0, 16.0, 3.0);
+        float diff = GetLight(p, lightPos);
+        float ao = 0.051 * GetAo(p, GetNormal(p));
+        vec4 ct = dc.c;
+        vec3 c = ct.rgb;
+        vec3 sceneColor = 0.7 * c + 0.5 * diff + 0.2 * ao;
+        gl_FragColor = vec4(sceneColor, ct.a);
+        
+    }
+}
+`;
+
+// movement
+
+let spline = new THREE.CatmullRomCurve3(
+  Array.from({ length: pointsCount }, () => {
+    return new THREE.Vector3().randomDirection().setLength(0.5*boxSize);
+  }),
+  true // closed
+);
+let segments = 1024;
+let positions = spline.getSpacedPoints(segments - 1);
+let splineTNB = spline.computeFrenetFrames(segments - 1, true);
+
+let splineQuats = []; // for movement of the gltf model
+let shaderQuats = []; // for movement of SDFs in the shader
+const offset = new THREE.Quaternion(-0.5, -0.5, -0.5, 0.5);
+
+for ( let i = 0; i < segments; i ++ ) { // calculate quaternions from Basis TNB and BTN (different order in the shader)
+    
+   const quat = new THREE.Quaternion( ).setFromBasis( splineTNB.tangents[ i ], splineTNB.normals[ i ], splineTNB.binormals[ i ] ); 
+   splineQuats.push( quat );
+   
+   const quatSh = quat.clone().multiply(offset); 
+   shaderQuats.push( quatSh );
+     
+}
+ 
+// spline helper
+scene.add(
+  new THREE.Points(
+    new THREE.BufferGeometry().setFromPoints(spline.points),
+    new THREE.PointsMaterial({ size: 0.15, color: 0xffff44 })
+  )
+);
+
+scene.add(
+  new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints(positions),
+    new THREE.LineBasicMaterial({ color: 0xff44ff })
+  )
+);
+
+// DataTexture: Position, Tangent, Normal, Binormal, Quaternion
+const dataRows = 5;
+const data = new Float32Array(segments * dataRows * 4); // segments * dataRows * 4 components (RGBA)
+
+function fillData(idx, row, array) {
+    const start = (idx + segments * row) * 4;
+    data[start + 0] = array[idx].x;
+    data[start + 1] = array[idx].y;
+    data[start + 2] = array[idx].z;
+    data[start + 3] = array[idx].w;
+
+}
+for (let i = 0; i < segments; i++) {
+    fillData(i, 0, positions);
+    fillData(i, 1, splineTNB.tangents);
+    fillData(i, 2, splineTNB.normals);
+    fillData(i, 3, splineTNB.binormals);
+    fillData(i, 4, shaderQuats);
+    
+}
+const splineDataTexture = new THREE.DataTexture(
+    data,
+    segments,
+    dataRows,
+    THREE.RGBAFormat,
+    THREE.FloatType
+);
+splineDataTexture.wrapS = THREE.RepeatWrapping;
+splineDataTexture.needsUpdate = true;
+
+const boxParam = [ boxSize, boxSize, boxSize, 0.0, 0.0, 0.0 ];
+
+let boxGeo;
+let box;
+let shaderMaterial;
+let camPos;
+
+boxGeo = new THREE.BoxGeometry(boxParam[0], boxParam[1], boxParam[2]);
+
+//helper
+scene.add(
+  new THREE.Box3Helper(
+    new THREE.Box3().setFromBufferAttribute(boxGeo.attributes.position),
+    0x444444
+  )
+);
+
+shaderMaterial = new THREE.ShaderMaterial({
+    uniforms: {
+        time: { value: 0.0 },
+        camPos: { value: new THREE.Vector3().copy(camera.position) },
+        resolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
+        splineData: { value: splineDataTexture }
+    },
+    vertexShader: vShader,
+    fragmentShader: fShader,
+    side: THREE.DoubleSide,
+    transparent: true,
+});
+box = new THREE.Mesh(boxGeo, shaderMaterial);
+scene.add(box);
+box.position.set(boxParam[3], boxParam[4], boxParam[5]);
+
+camPos = new THREE.Vector3();
+
+controls.addEventListener("change", event => {
+    camPos.copy(camera.position);
+    box.worldToLocal(camPos);
+    shaderMaterial.uniforms.camPos.value.copy(camPos);
+}, false);
+
+const clock = new THREE.Clock();
+let t = 0.0;
+
+camPos.copy(camera.position);
+box.worldToLocal(camPos);
+shaderMaterial.uniforms.camPos.value.copy(camPos);
+
+const loader = new GLTFLoader( );
+const shuttle = new THREE.Object3D( );
+loader.load( 'Space Shuttle/SpaceShuttle(1).gltf', processShuttle ); // (CC-BY) Poly by Googl
+ 
+let iShuttle = 0;
+
+animate();
+
+function animate() {
+    t = clock.getElapsedTime(); 
+    requestAnimationFrame(animate);
+    driving( );
+    shaderMaterial.uniforms.time.value = 2.0*t;
+    renderer.render(scene, camera);
+}
+
+function driving( ) {
+    
+   if ( iShuttle === segments ) {
+        
+        iShuttle = 0; // loop
+ 
+    }
+     
+    shuttle.quaternion.set(splineQuats[ iShuttle ].x, splineQuats[ iShuttle ].y, splineQuats[ iShuttle ].z, splineQuats[ iShuttle ].w);
+    shuttle.position.set( positions[ iShuttle ].x , positions[ iShuttle ].y, positions[ iShuttle ].z );
+    
+    iShuttle ++;
+    
+}
+
+function processShuttle( gltf ) {
+    
+    gltf.scene.rotation.x = -Math.PI / 2; 
+    gltf.scene.rotation.z = -Math.PI / 2; 
+    shuttle.add( gltf.scene );
+    shuttle.scale.set( 0.015, 0.015, 0.015 ); // because gltf.scene is big
+    scene.add( shuttle );
+    
+}
+
+</script>
+</html>

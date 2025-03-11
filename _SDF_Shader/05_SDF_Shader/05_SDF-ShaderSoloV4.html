@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/sdfs-in-the-scene-raymarching/78355  -->
+<!-- See the templates for DataTexture: 
+        https://codepen.io/prisoner849/pen/dPyvLqQ 
+        https://hofk.de/main/threejs/_SDF_Shader/sdf-spline-data-datatexture/dist/DataTexture.html
+-->
+<html>
+<head>
+  <title>05_SDF_ShaderSolo V4</title>
+  <meta charset="utf-8" />
+  <style>
+    body{
+      overflow: hidden;
+      margin: 0;
+    }  
+  </style>
+</head>
+<body></body>
+<script type="module">
+
+// @author hofk
+import * as THREE from "../../jsm/three.module.173.js";
+import { OrbitControls } from "../../jsm/OrbitControls.173.js";
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setClearColor(0xdedede);
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+camera.position.set(5, 5, 10);
+
+const light = new THREE.AmbientLight(0x404040, 4.5); // soft white light
+scene.add(light);
+const directionalLight = new THREE.DirectionalLight(0xffffff, 2.5);
+directionalLight.position.set(5, 15, 15);
+scene.add(directionalLight);
+const controls = new OrbitControls(camera, renderer.domElement);
+const axesHelper = new THREE.AxesHelper( 3 );
+scene.add(axesHelper);
+
+const pointsCount = 5;
+const boxSize = 6;
+
+// Vertex Shader
+const vShader = `
+  varying vec3 vPosition;
+  varying vec2 vUv;
+  void main() {
+    vPosition = position;
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+  }
+`;
+
+// Fragment Shader
+const fShader = `
+uniform float time;
+uniform vec3 camPos;
+uniform vec2 resolution;
+uniform sampler2D splineData;
+
+varying vec3 vPosition;
+varying vec2 vUv;
+
+#define MAX_STEPS 250
+#define MAX_DIST 100.0
+#define SURF_DIST 1e-4
+
+// distance color
+struct distCol {
+    float d;
+    vec4 c;
+};
+
+// ... SDF ........................................
+float sdCapsule(vec3 p, vec3 a, vec3 b, float r) {
+  vec3 pa = p - a;
+  vec3 ba = b - a;
+  float h = clamp(dot(pa,ba)/ dot(ba,ba), 0.0, 1.0);
+  return length(pa - ba * h) - r;
+}
+
+distCol opUnion(distCol dc1, distCol dc2) { 
+  distCol dc;
+  float d = min(dc1.d, dc2.d);
+  vec4 c = d < dc2.d ? dc1.c : dc2.c; 
+  dc.d = d;
+  dc.c = c;     
+  return dc;
+}
+//................................................
+
+distCol GetDist(vec3 p) {
+    float t = mod(time * 0.1, 1.0);
+    float vStep = 1.0 / 4.0;
+    
+    vec3 dataPosition = texture(splineData, vec2(t, vStep * 0.5)).rgb;
+    vec3 dataTangent  = texture(splineData, vec2(t, vStep * 1.5)).rgb;
+    vec3 dataNormal   = texture(splineData, vec2(t, vStep * 2.5)).rgb;
+    vec3 dataBinormal = texture(splineData, vec2(t, vStep * 3.5)).rgb;
+    
+    float axesLength = 0.6;
+    
+    //... SDF ...  
+    distCol dcCapsuleTangent;
+    dcCapsuleTangent.d = sdCapsule(p, dataPosition, dataPosition + dataTangent * axesLength, 0.05);
+    dcCapsuleTangent.c =  vec4(1.0, 1.0, 0.2, 1.0);
+    distCol dcCapsuleNormal;
+    dcCapsuleNormal.d = sdCapsule(p, dataPosition, dataPosition + dataNormal * axesLength, 0.05);
+    dcCapsuleNormal.c =  vec4(0.2, 1.0, 0.2, 1.0);
+    distCol dcCapsuleBinormal;
+    dcCapsuleBinormal.d = sdCapsule(p, dataPosition, dataPosition + dataBinormal * axesLength, 0.05);    
+    dcCapsuleBinormal.c =  vec4(0.2, 0.8, 1.0, 1.0);
+    
+    distCol dc;  // apply to reserved dc
+    dc = dcCapsuleTangent;
+    dc = opUnion(dc, dcCapsuleNormal);
+    dc = opUnion(dc, dcCapsuleBinormal);
+    
+    return dc;
+}
+
+distCol RayMarch(vec3 ro, vec3 rd) {
+    distCol dc;
+    float dO = 0.0;
+    for (int i = 0; i < MAX_STEPS; i++) {
+        vec3 p = ro + rd * dO;
+        dc = GetDist(p);
+        dO += dc.d;
+        if (dO > MAX_DIST || dc.d < SURF_DIST) break;
+    }
+    dc.d = dO;
+    return dc;
+}
+
+vec3 GetNormal(vec3 p) {
+    float d = GetDist(p).d;
+    vec2 e = vec2(SURF_DIST, 0.0);
+    float d1 = GetDist(p - e.xyy).d;
+    float d2 = GetDist(p - e.yxy).d;
+    float d3 = GetDist(p - e.yyx).d;
+    vec3 n = d - vec3(d1, d2, d3);
+    return normalize(n);
+}
+
+float GetAo(vec3 p, vec3 n) {
+    float occ = 0.0;
+    float sca = 1.0;
+    for (int i = 0; i < 5; i++) {
+        float h = 0.001 + 0.15 * float(i) / 4.0;
+        float d = GetDist(p + h * n).d;
+        occ += (h - d) * sca;
+        sca *= 0.95;
+    }
+    return clamp(1.0 - 1.5 * occ, 0.0, 1.0);
+}
+
+float GetLight(vec3 p, vec3 lPos) {
+    vec3 l = normalize(lPos - p);
+    vec3 n = GetNormal(p);
+    float dif = clamp(dot(n, l), 0.0, 1.0);
+    return dif;
+}
+
+void main() {
+    vec2 uv = vUv - 0.5;
+    vec3 ro = camPos;
+    vec3 rd = normalize(vPosition - ro);
+    distCol dc = RayMarch(ro, rd);
+    
+    if (dc.d >= MAX_DIST) {
+        gl_FragColor = vec4(0.0); // no hit
+    } else {
+        vec3 p = ro + rd * dc.d;
+        vec3 lightPos = vec3(2.0, 16.0, 3.0);
+        float diff = GetLight(p, lightPos);
+        float ao = 0.051 * GetAo(p, GetNormal(p));
+        vec4 ct = dc.c;
+        vec3 c = ct.rgb;
+        vec3 sceneColor = 0.7 * c + 0.5 * diff + 0.2 * ao;
+        gl_FragColor = vec4(sceneColor, ct.a);
+        
+    }
+}
+`;
+
+let spline = new THREE.CatmullRomCurve3(
+  Array.from({ length: pointsCount }, () => {
+    return new THREE.Vector3().randomDirection().setLength(0.5*boxSize);
+  }),
+  true // closed
+);
+let segments = 1024;
+let positions = spline.getSpacedPoints(segments - 1);
+let splineTNB = spline.computeFrenetFrames(segments - 1, true);
+
+// spline helper
+scene.add(
+  new THREE.Points(
+    new THREE.BufferGeometry().setFromPoints(spline.points),
+    new THREE.PointsMaterial({ size: 0.15, color: 0xffff44 })
+  )
+);
+
+scene.add(
+  new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints(positions),
+    new THREE.LineBasicMaterial({ color: 0xff44ff })
+  )
+);
+
+// DataTexture: Position, Tangent, Normal, Binormal
+
+const data = new Float32Array(segments * 4 * 4); // segments * rows * 4 components (RGBA)
+
+function fillData(idx, row, array) {
+    const start = (idx + segments * row) * 4;
+    data[start + 0] = array[idx].x;
+    data[start + 1] = array[idx].y;
+    data[start + 2] = array[idx].z;
+    data[start + 3] = 0.0;
+}
+for (let i = 0; i < segments; i++) {
+    fillData(i, 0, positions);
+    fillData(i, 1, splineTNB.tangents);
+    fillData(i, 2, splineTNB.normals);
+    fillData(i, 3, splineTNB.binormals);
+}
+const splineDataTexture = new THREE.DataTexture(
+    data,
+    segments,
+    4,
+    THREE.RGBAFormat,
+    THREE.FloatType
+);
+splineDataTexture.wrapS = THREE.RepeatWrapping;
+splineDataTexture.needsUpdate = true;
+
+const boxParam = [ boxSize, boxSize, boxSize, 0.0, 0.0, 0.0 ];
+
+let boxGeo;
+let box;
+let shaderMaterial;
+let camPos;
+
+boxGeo = new THREE.BoxGeometry(boxParam[0], boxParam[1], boxParam[2]);
+
+//helper
+scene.add(
+  new THREE.Box3Helper(
+    new THREE.Box3().setFromBufferAttribute(boxGeo.attributes.position),
+    0x444444
+  )
+);
+
+shaderMaterial = new THREE.ShaderMaterial({
+    uniforms: {
+        time: { value: 0.0 },
+        camPos: { value: new THREE.Vector3().copy(camera.position) },
+        resolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
+        splineData: { value: splineDataTexture }
+    },
+    vertexShader: vShader,
+    fragmentShader: fShader,
+    side: THREE.DoubleSide,
+    transparent: true,
+});
+box = new THREE.Mesh(boxGeo, shaderMaterial);
+scene.add(box);
+box.position.set(boxParam[3], boxParam[4], boxParam[5]);
+
+camPos = new THREE.Vector3();
+
+controls.addEventListener("change", event => {
+    camPos.copy(camera.position);
+    box.worldToLocal(camPos);
+    shaderMaterial.uniforms.camPos.value.copy(camPos);
+}, false);
+
+const clock = new THREE.Clock();
+let t = 0.0;
+
+camPos.copy(camera.position);
+box.worldToLocal(camPos);
+shaderMaterial.uniforms.camPos.value.copy(camPos);
+ 
+animate();
+
+function animate() {
+    t = clock.getElapsedTime(); 
+    requestAnimationFrame(animate);
+    shaderMaterial.uniforms.time.value = t;
+    renderer.render(scene, camera);
+}
+</script>
+</html>

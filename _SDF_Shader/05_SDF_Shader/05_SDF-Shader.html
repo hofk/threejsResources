@@ -30,7 +30,7 @@ const renderer = new THREE.WebGLRenderer({antialias: true});
 renderer.setClearColor(0xdedede);
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
-camera.position.set(0, 0, 30);
+camera.position.set(1, 2, 10);
 const light = new THREE.AmbientLight( 0x404040, 4.5 ); // soft white light
 scene.add( light );
 const directionalLight = new THREE.DirectionalLight( 0xffffff, 2.5 );
@@ -39,23 +39,71 @@ scene.add( directionalLight );
 const controls = new OrbitControls(camera, renderer.domElement);
 const axesHelper = new THREE.AxesHelper( 20 );
 scene.add( axesHelper );
-//const gridHelper = new THREE.GridHelper( 20, 20 );
-//scene.add( gridHelper );
-/*
-const IcoMesh = new THREE.Mesh(
-    new THREE.IcosahedronGeometry( 10, 4 ),   
-    new THREE.MeshPhongMaterial({color: 0xaaee00, side: THREE.FrontSide, transparent: true, opacity: 0.07, wireframe: false }));
-scene.add( IcoMesh );
-IcoMesh.renderOrder = Infinity; 
-*/
+ 
+
+const pointsCount = 5;
+const boxSize = 6;
+
+let spline = new THREE.CatmullRomCurve3(
+  Array.from({ length: pointsCount }, () => {
+    return new THREE.Vector3().randomDirection().setLength(0.5*boxSize);
+  }),
+  true // closed
+);
+let segments = 1024;
+let positions = spline.getSpacedPoints(segments - 1);
+let splineTNB = spline.computeFrenetFrames(segments - 1, true);
+
+// spline helper
+scene.add(
+  new THREE.Points(
+    new THREE.BufferGeometry().setFromPoints(spline.points),
+    new THREE.PointsMaterial({ size: 0.15, color: 0xffff44 })
+  )
+);
+
+scene.add(
+  new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints(positions),
+    new THREE.LineBasicMaterial({ color: 0xff44ff })
+  )
+);
+
+// DataTexture: Position, Tangent, Normal, Binormal
+
+const data = new Float32Array(segments * 4 * 4); // segments * rows * 4 components (RGBA)
+
+function fillData(idx, row, array) {
+    const start = (idx + segments * row) * 4;
+    data[start + 0] = array[idx].x;
+    data[start + 1] = array[idx].y;
+    data[start + 2] = array[idx].z;
+    data[start + 3] = 0.0;
+}
+for (let i = 0; i < segments; i++) {
+    fillData(i, 0, positions);
+    fillData(i, 1, splineTNB.tangents);
+    fillData(i, 2, splineTNB.normals);
+    fillData(i, 3, splineTNB.binormals);
+}
+const splineDataTexture = new THREE.DataTexture(
+    data,
+    segments,
+    4,
+    THREE.RGBAFormat,
+    THREE.FloatType
+);
+splineDataTexture.wrapS = THREE.RepeatWrapping;
+splineDataTexture.needsUpdate = true;
 
 let SDF_design;
+
 const boxParam = []; // boxes for SDFs
 
 //   define size and position of boxes containing the SDFs from  SDF_designs.js
 // *****************************************************************************
 //               width, height, depth, pos x, pos y, pos z
-boxParam[ 0 ] = [ 1000.0, 1000.0, 100.0,   0.0,   0.0,   0.0 ];
+boxParam[ 0 ] = [ boxSize, boxSize, boxSize,   0.0,   0.0,   0.0 ];
  
 
 // *****************************************************************************
@@ -72,7 +120,12 @@ for (let i = 0; i < countSDF; i ++ ) {
     boxGeo.push( new THREE.BoxGeometry(boxParam[ i ][ 0 ], boxParam[ i ][ 1 ] , boxParam[ i ][2 ]) ); //size
     SDF_design = SDF_designs[ i ]; 
     shaderMaterial.push( new THREE.ShaderMaterial({
-        uniforms: { camPos: {value: new THREE.Vector3().copy(camera.position)}, time: { value: 0.0 } },
+        uniforms: {
+            time: { value: 0.0 },
+            camPos: {value: new THREE.Vector3().copy(camera.position)}, 
+            resolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
+            splineData: { value: splineDataTexture }         
+        },
         vertexShader: vShader,
         fragmentShader: fShaderTop + SDF_design + fShaderBtm,
         side: THREE.DoubleSide,
@@ -84,6 +137,14 @@ for (let i = 0; i < countSDF; i ++ ) {
     camPos.push( new THREE.Vector3( ) );
   
 }
+
+//helper box 0
+scene.add(
+  new THREE.Box3Helper(
+    new THREE.Box3().setFromBufferAttribute(boxGeo[0].attributes.position),
+    0x444444
+  )
+);
 
 controls.addEventListener("change", event => {
 

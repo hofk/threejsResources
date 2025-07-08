@@ -1,5 +1,7 @@
 # threejsResources
 
+License identical to three.js
+
 -use the html file- 
 
 
